@@ -39,6 +39,7 @@ import { calculatePages } from '@/utils/pageUtils';
 import { cn } from '@/utils/cn';
 import { applyPageGaps } from '@/utils/pageGapManager';
 import { matchShortcut } from '@/utils/shortcutUtils';
+import { ScriptureModal } from '../scripture/ScriptureModal';
 
 interface EditorProps {
     initialContent?: string;
@@ -86,11 +87,9 @@ export const Editor = ({
         top: 20, right: 20, bottom: 20, left: 20,
     });
 
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [readingTime, setReadingTime] = useState(0);
     const [pageCount, setPageCount] = useState(1);
     const [zoom, setZoom] = useState(1.0);
-    const editorContainerRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
@@ -307,10 +306,21 @@ export const Editor = ({
         fileInputRef.current?.click();
     }, []);
 
+    const handleInsertScripture = (verse: BibleVerse) => {
+        if (!editor) return;
+        editor.chain().focus().insertContent(`
+            <div class="bible-verse-insert my-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-blue-500 rounded-r-xl">
+                <p class="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-widest">${verse.book} ${verse.chapter}:${verse.verse}</p>
+                <div class="text-gray-700 dark:text-gray-200 italic leading-relaxed text-sm">"${verse.content}"</div>
+            </div>
+            <p></p>
+        `).run();
+    };
+
     if (!editor) return null;
 
     return (
-        <div className="flex-1 flex overflow-hidden relative" ref={editorContainerRef} style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+        <div className="flex-1 flex h-full overflow-hidden relative bg-gray-50 dark:bg-[#1E1E1E]">
             <input
                 type="file"
                 ref={fileInputRef}
@@ -321,48 +331,68 @@ export const Editor = ({
 
             <OutlineSidebar editor={editor} />
 
-            <div className="flex-1 overflow-auto paper-container custom-scrollbar">
-                <div className={cn(
-                    "paper",
-                    paperSize === 'a4' ? "paper-a4" : "paper-b5",
-                    viewMode === 'editing' ? "editing-mode" : "print-mode",
-                    theme
-                )}>
-                    <EditorContent editor={editor} />
+            <div className="flex-1 flex flex-col min-w-0 relative h-full">
+                <div className="flex-1 overflow-auto paper-container custom-scrollbar">
+                    <div
+                        className="flex justify-center p-8 transition-transform duration-200 ease-out min-h-full"
+                        style={{
+                            transform: `scale(${zoom})`,
+                            transformOrigin: 'top center'
+                        }}
+                    >
+                        <div className={cn(
+                            "paper shadow-2xl relative",
+                            paperSize === 'a4' ? "paper-a4" : "paper-b5",
+                            viewMode === 'editing' ? "editing-mode" : "print-mode",
+                            theme
+                        )}>
+                            <EditorContent editor={editor} />
 
-                    {stickyNotes.map(note => (
-                        <Vignette
-                            key={note.id}
-                            note={note}
-                            settings={editorSettings}
-                            onUpdate={updateStickyNote}
-                            onDelete={deleteStickyNote}
+                            {stickyNotes.map(note => (
+                                <Vignette
+                                    key={note.id}
+                                    note={note}
+                                    settings={editorSettings}
+                                    onUpdate={updateStickyNote}
+                                    onDelete={deleteStickyNote}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 flex justify-center z-10 pointer-events-none sticky bottom-0">
+                    <div className="pointer-events-auto w-full max-w-[210mm]">
+                        <EditorToolbar
+                            editor={editor}
+                            theme={theme}
+                            onThemeChange={onThemeChange}
+                            paperSize={paperSize}
+                            onPaperSizeChange={setPaperSize}
+                            viewMode={viewMode}
+                            onViewModeChange={setViewMode}
+                            onPrint={handlePrint}
+                            onSave={() => onSave && onSave(editor.getHTML(), currentFilePath)}
+                            onOpenScripture={() => setIsScriptureModalOpen(true)}
+                            onOpenAI={() => setIsAIModalOpen(true)}
+                            onOpenInsights={() => setIsInsightsOpen(true)}
+                            addImage={addImage}
+                            onCreateStickyNote={createStickyNote}
+                            isFocusMode={isFocusMode}
+                            onToggleFocusMode={() => onFocusModeChange && onFocusModeChange(!isFocusMode)}
+                            readingTime={readingTime}
+                            pageCount={pageCount}
+                            zoom={zoom}
+                            onZoomChange={setZoom}
                         />
-                    ))}
+                    </div>
                 </div>
             </div>
 
-            <EditorToolbar
-                editor={editor}
-                theme={theme}
-                onThemeChange={onThemeChange}
-                paperSize={paperSize}
-                onPaperSizeChange={setPaperSize}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                onPrint={handlePrint}
-                onSave={() => onSave && onSave(editor.getHTML(), currentFilePath)}
-                onOpenScripture={() => setIsScriptureModalOpen(true)}
-                onOpenAI={() => setIsAIModalOpen(true)}
-                onOpenInsights={() => setIsInsightsOpen(true)}
-                addImage={addImage}
-                onCreateStickyNote={createStickyNote}
-                isFocusMode={isFocusMode}
-                onToggleFocusMode={() => onFocusModeChange && onFocusModeChange(!isFocusMode)}
-                readingTime={readingTime}
-                pageCount={pageCount}
-                zoom={zoom}
-                onZoomChange={setZoom}
+            <ScriptureModal
+                isOpen={isScriptureModalOpen}
+                onClose={() => setIsScriptureModalOpen(false)}
+                onInsert={handleInsertScripture}
             />
 
             {toast && (
