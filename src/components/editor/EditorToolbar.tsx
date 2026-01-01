@@ -103,7 +103,7 @@ export const EditorToolbar = ({
 
     return (
         <div
-            className="flex flex-col gap-2 p-3 w-full max-w-[210mm] luxury-toolbar rounded-2xl z-20 no-drag border border-gray-200 dark:border-gray-800 select-none bg-white dark:bg-gray-900 shadow-2xl"
+            className="flex flex-col gap-2 p-3 w-full max-w-[210mm] luxury-toolbar rounded-3xl z-20 no-drag border border-white/20 dark:border-white/10 select-none bg-white/70 dark:bg-black/50 backdrop-blur-md shadow-2xl"
             onWheel={(e) => e.stopPropagation()}
         >
             <div className="flex items-center gap-2 flex-wrap pb-1">

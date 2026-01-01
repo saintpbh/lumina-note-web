@@ -317,6 +317,26 @@ export const Editor = ({
         `).run();
     };
 
+    const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const resetHideTimer = useCallback(() => {
+        setIsToolbarVisible(true);
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = setTimeout(() => {
+            setIsToolbarVisible(false);
+        }, 3000);
+    }, []);
+
+    useEffect(() => {
+        resetHideTimer();
+        window.addEventListener('mousemove', resetHideTimer);
+        return () => {
+            window.removeEventListener('mousemove', resetHideTimer);
+            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        };
+    }, [resetHideTimer]);
+
     if (!editor) return null;
 
     return (
@@ -329,10 +349,8 @@ export const Editor = ({
                 onChange={handleImageUpload}
             />
 
-            <OutlineSidebar editor={editor} />
-
             <div className="flex-1 flex flex-col min-w-0 relative h-full">
-                <div className="flex-1 overflow-auto paper-container custom-scrollbar">
+                <div className="flex-1 overflow-auto paper-container custom-scrollbar" onScroll={resetHideTimer}>
                     <div
                         className="flex justify-center p-8 transition-transform duration-200 ease-out min-h-full"
                         style={{
@@ -361,7 +379,17 @@ export const Editor = ({
                     </div>
                 </div>
 
-                <div className="p-4 flex justify-center z-10 pointer-events-none sticky bottom-0">
+                <div
+                    className={cn(
+                        "p-4 flex justify-center z-10 pointer-events-none fixed bottom-0 left-0 right-0 transition-all duration-500 ease-in-out transform",
+                        isToolbarVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+                    )}
+                    onMouseEnter={() => {
+                        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+                        setIsToolbarVisible(true);
+                    }}
+                    onMouseLeave={resetHideTimer}
+                >
                     <div className="pointer-events-auto w-full max-w-[210mm]">
                         <EditorToolbar
                             editor={editor}
@@ -388,6 +416,8 @@ export const Editor = ({
                     </div>
                 </div>
             </div>
+
+            <OutlineSidebar editor={editor} />
 
             <ScriptureModal
                 isOpen={isScriptureModalOpen}
