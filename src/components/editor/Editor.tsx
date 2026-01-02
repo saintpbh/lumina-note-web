@@ -265,7 +265,8 @@ export const Editor = ({
                 class: 'focus:outline-none min-h-full selection:bg-blue-100 dark:selection:bg-blue-500/30',
                 style: "font-family: 'KoPub Batang', serif;",
             }
-        }
+        },
+        immediatelyRender: false,
     });
 
     useEffect(() => {
@@ -308,13 +309,18 @@ export const Editor = ({
 
     const handleInsertScripture = (verse: BibleVerse) => {
         if (!editor) return;
-        editor.chain().focus().insertContent(`
-            <div class="bible-verse-insert my-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-blue-500 rounded-r-xl">
-                <p class="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-widest">${verse.book} ${verse.chapter}:${verse.verse}</p>
-                <div class="text-gray-700 dark:text-gray-200 italic leading-relaxed text-sm">"${verse.content}"</div>
-            </div>
-            <p></p>
-        `).run();
+
+        // Use a cleaner HTML structure without extra whitespace from indentation
+        const html = `<div class="bible-verse-insert my-6 p-5 bg-blue-50/40 dark:bg-blue-900/10 border-l-[6px] border-blue-500 rounded-r-2xl shadow-sm">` +
+            `<div class="flex items-center gap-2 mb-2 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] luxury-mono">` +
+            `<span class="w-2 h-2 rounded-full bg-blue-500/20"></span>` +
+            `<span>${verse.book} ${verse.chapter}:${verse.verse}</span>` +
+            `</div>` +
+            `<div class="text-slate-700 dark:text-slate-200 luxury-serif italic leading-relaxed text-base">"${verse.content}"</div>` +
+            `</div>` +
+            `<p></p>`;
+
+        editor.chain().focus().insertContent(html).run();
     };
 
     const [isToolbarVisible, setIsToolbarVisible] = useState(true);
