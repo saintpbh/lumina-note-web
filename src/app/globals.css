@@ -627,6 +627,15 @@ body {
   transition: color 0.3s ease;
 }
 
+/* Typewriter Mode Support */
+.tiptap.ProseMirror {
+  padding-bottom: 50vh !important;
+}
+
+.paper-container {
+  scroll-padding-top: 40vh;
+}
+
 /* Bible Quote Styles */
 .bible-quote {
   border-left: 4px solid var(--accent-color);

@@ -29,7 +29,7 @@ import { OutlineSidebar } from './OutlineSidebar';
 import { Vignette, VignetteData } from './Vignette';
 import { useStickyNotes } from './hooks/useStickyNotes';
 import { ToastNotification, ToastType } from '../ui/ToastNotification';
-import { BibleVerse, ShortcutConfig, EditorSettings } from '@/shared/types';
+import { BibleVerse, ShortcutConfig, EditorSettings, DEFAULT_PROMPTER_SETTINGS, PrompterSettings } from '@/shared/types';
 import { LineHeight, LetterSpacing, Footnote } from './CustomExtensions';
 import { PageBreak } from './PageBreakExtension';
 import { PageSpacer } from './PageSpacer';
@@ -40,6 +40,7 @@ import { cn } from '@/utils/cn';
 import { applyPageGaps } from '@/utils/pageGapManager';
 import { matchShortcut } from '@/utils/shortcutUtils';
 import { ScriptureModal } from '../scripture/ScriptureModal';
+import { PrompterOverlay } from '../prompter/PrompterOverlay';
 
 interface EditorProps {
     initialContent?: string;
@@ -80,6 +81,7 @@ export const Editor = ({
     const [isInsightsOpen, setIsInsightsOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isPrompterOpen, setIsPrompterOpen] = useState(false);
+    const [prompterSettings, setPrompterSettings] = useState<PrompterSettings>(DEFAULT_PROMPTER_SETTINGS);
 
     const [paperSize, setPaperSize] = useState<'a4' | 'b5'>('a4');
     const [viewMode, setViewMode] = useState<'editing' | 'print'>('editing');
@@ -237,7 +239,7 @@ export const Editor = ({
             if (newCount) setPageCount(newCount);
 
             if (editorSettingsRef.current.centerCursorOnType) {
-                setTimeout(() => {
+                requestAnimationFrame(() => {
                     if (!editor || editor.isDestroyed || !editor.view || !editor.view.dom) return;
                     try {
                         const { from } = editor.state.selection;
@@ -247,17 +249,22 @@ export const Editor = ({
                         if (container && coords) {
                             const containerRect = container.getBoundingClientRect();
                             const cursorY = coords.top;
-                            const targetScrollTop = container.scrollTop + cursorY - containerRect.top - (containerRect.height / 2);
 
-                            container.scrollTo({
-                                top: targetScrollTop,
-                                behavior: 'smooth'
-                            });
+                            // Target 40% from the top of the viewport for eye-level typing
+                            const targetY = containerRect.top + (containerRect.height * 0.4);
+                            const diff = cursorY - targetY;
+
+                            if (Math.abs(diff) > 2) { // Only scroll if needed
+                                container.scrollBy({
+                                    top: diff,
+                                    behavior: 'auto' // Use auto for instant typewriter feel
+                                });
+                            }
                         }
                     } catch (e) {
-                        console.error('Center typing scroll failed:', e);
+                        console.error('Typewriter scroll failed:', e);
                     }
-                }, 50);
+                });
             }
         },
         editorProps: {
@@ -307,6 +314,27 @@ export const Editor = ({
         fileInputRef.current?.click();
     }, []);
 
+    const handleToggleFocus = async () => {
+        if (!onFocusModeChange) return;
+
+        const newFocusState = !isFocusMode;
+        onFocusModeChange(newFocusState);
+
+        try {
+            if (newFocusState) {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } else {
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                }
+            }
+        } catch (err) {
+            console.error('Fullscreen toggle failed:', err);
+        }
+    };
+
     const handleInsertScripture = (verse: BibleVerse) => {
         if (!editor) return;
 
@@ -335,7 +363,6 @@ export const Editor = ({
     }, []);
 
     useEffect(() => {
-        resetHideTimer();
         window.addEventListener('mousemove', resetHideTimer);
         return () => {
             window.removeEventListener('mousemove', resetHideTimer);
@@ -347,15 +374,18 @@ export const Editor = ({
         const handlePrintEvent = () => handlePrint();
         const handleAIEvent = () => setIsAIModalOpen(true);
         const handleBibleEvent = () => setIsScriptureModalOpen(true);
+        const handlePrompterEvent = () => setIsPrompterOpen(true);
 
         window.addEventListener('trigger-print', handlePrintEvent);
         window.addEventListener('trigger-ai', handleAIEvent);
         window.addEventListener('trigger-bible', handleBibleEvent);
+        window.addEventListener('trigger-prompter', handlePrompterEvent);
 
         return () => {
             window.removeEventListener('trigger-print', handlePrintEvent);
             window.removeEventListener('trigger-ai', handleAIEvent);
             window.removeEventListener('trigger-bible', handleBibleEvent);
+            window.removeEventListener('trigger-prompter', handlePrompterEvent);
         };
     }, [handlePrint]);
 
@@ -429,7 +459,7 @@ export const Editor = ({
                             addImage={addImage}
                             onCreateStickyNote={createStickyNote}
                             isFocusMode={isFocusMode}
-                            onToggleFocusMode={() => onFocusModeChange && onFocusModeChange(!isFocusMode)}
+                            onToggleFocusMode={handleToggleFocus}
                             readingTime={readingTime}
                             pageCount={pageCount}
                             zoom={zoom}
@@ -446,6 +476,15 @@ export const Editor = ({
                 onClose={() => setIsScriptureModalOpen(false)}
                 onInsert={handleInsertScripture}
             />
+
+            {isPrompterOpen && (
+                <PrompterOverlay
+                    content={editor.getHTML()}
+                    settings={prompterSettings}
+                    onSettingsChange={(newSettings) => setPrompterSettings(prev => ({ ...prev, ...newSettings }))}
+                    onClose={() => setIsPrompterOpen(false)}
+                />
+            )}
 
             {toast && (
                 <ToastNotification

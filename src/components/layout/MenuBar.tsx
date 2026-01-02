@@ -6,13 +6,14 @@ import {
     FileText, Edit3, Settings, HelpCircle, Plus, FolderOpen,
     Save, Download, Printer, Undo2, Redo2, Scissors,
     Copy, Clipboard, Layout, Maximize2, Palette, Zap,
-    BookOpen, Activity, PlayCircle, Eye
+    BookOpen, Activity, PlayCircle, Eye, LogIn, CloudOff
 } from 'lucide-react';
 
 interface MenuBarProps {
     onAction: (actionId: string) => void;
     activeDocumentId: number | null;
     theme: string;
+    isLoggedIn?: boolean;
 }
 
 interface MenuItem {
@@ -30,7 +31,7 @@ interface MenuSection {
     items: MenuItem[];
 }
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, theme }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, theme, isLoggedIn }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +46,10 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                 { id: 'save', label: 'Save', icon: <Save size={14} />, shortcut: 'Alt+S', disabled: !activeDocumentId },
                 { id: 'export-pdf', label: 'Export as PDF', icon: <Download size={14} />, disabled: !activeDocumentId },
                 { id: 'print', label: 'Print...', icon: <Printer size={14} />, shortcut: 'Alt+P', disabled: !activeDocumentId },
+                { id: 'divider2', label: '', divider: true },
+                isLoggedIn
+                    ? { id: 'logout', label: 'Sign Out (Cloud)', icon: <CloudOff size={14} /> }
+                    : { id: 'login', label: 'Sign In / Sync', icon: <LogIn size={14} /> },
             ]
         },
         {
@@ -64,6 +69,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
             label: 'View',
             items: [
                 { id: 'toggle-sidebar', label: 'Sidebar', icon: <Layout size={14} />, shortcut: 'Alt+\\' },
+                { id: 'fullscreen', label: 'Toggle Full Screen', icon: <Maximize2 size={14} />, shortcut: 'F11' },
                 { id: 'focus-mode', label: 'Focus Mode', icon: <Maximize2 size={14} />, shortcut: 'Alt+Shift+F' },
                 { id: 'divider1', label: '', divider: true },
                 { id: 'theme-default', label: 'Theme: Default', icon: <Palette size={14} /> },

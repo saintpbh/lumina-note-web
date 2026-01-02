@@ -8,6 +8,7 @@ import { SermonVersionSidebar } from '@/components/sermons/SermonVersionSidebar'
 import { ShortcutConfig, Sermon } from '@/shared/types';
 import { matchShortcut } from '@/utils/shortcutUtils';
 import { Dashboard } from '@/components/ui/Dashboard';
+import { googleDriveManager, GoogleUser } from '@/utils/googleDriveManager';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -67,6 +68,8 @@ export default function Home() {
   const [paperSize, setPaperSize] = useState<'a4' | 'b5'>('a4');
   const [viewMode, setViewMode] = useState<'editing' | 'print'>('editing');
   const [printMargins, setPrintMargins] = useState({ top: 20, right: 20, bottom: 20, left: 20 });
+  const [user, setUser] = useState<GoogleUser | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const editorRef = useRef<any>(null);
 
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
@@ -102,17 +105,112 @@ export default function Home() {
       try {
         const parsed = JSON.parse(savedSermons);
         setOpenSermons(parsed);
-        if (parsed.length > 0) {
-          const activeId = localStorage.getItem('lumina-web-active-id');
-          if (activeId) setActiveSermonId(Number(activeId));
-          else setActiveSermonId(parsed[0].id);
-        }
+        // We no longer set activeSermonId on mount to ensure we always start at the Dashboard
       } catch (e) { console.error(e); }
     }
 
-    const savedTheme = localStorage.getItem('lumina-web-theme');
-    if (savedTheme) setTheme(savedTheme as any);
+    // Initial check for Google Drive token
+    const token = localStorage.getItem('google_drive_token');
+    if (token) {
+      googleDriveManager.setAccessToken(token);
+      googleDriveManager.getUserInfo().then(u => {
+        if (u) {
+          setUser(u);
+          handlePullFromCloud();
+        } else {
+          localStorage.removeItem('google_drive_token');
+        }
+      });
+    }
   }, []);
+
+  const handlePullFromCloud = async () => {
+    setSyncStatus('syncing');
+    try {
+      const cloudSermons = await googleDriveManager.listSermons();
+      if (cloudSermons.length > 0) {
+        setOpenSermons(prev => {
+          const localMap = new Map(prev.map(s => [s.id, s]));
+          cloudSermons.forEach(s => localMap.set(s.id, s));
+          return Array.from(localMap.values());
+        });
+        setSyncStatus('synced');
+      } else {
+        setSyncStatus('idle');
+      }
+    } catch (e) {
+      console.error('Pull from GD failed:', e);
+      setSyncStatus('error');
+    }
+  };
+
+  const handleLogin = async () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      alert("Google Client ID is not configured.");
+      return;
+    }
+
+    const redirectUri = window.location.origin + '/oauth/callback';
+    const scope = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}`;
+
+    const popup = window.open(authUrl, 'Google Login', 'width=500,height=600');
+
+    const handleToken = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data.type === 'google-token') {
+        const { token } = event.data;
+        localStorage.setItem('google_drive_token', token);
+        googleDriveManager.setAccessToken(token);
+        const userInfo = await googleDriveManager.getUserInfo();
+        setUser(userInfo);
+        handlePullFromCloud();
+        window.removeEventListener('message', handleToken);
+      }
+    };
+    window.addEventListener('message', handleToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('google_drive_token');
+    googleDriveManager.setAccessToken(null);
+    setUser(null);
+    setSyncStatus('idle');
+  };
+
+  const handleToggleFullScreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.error('Fullscreen toggle failed:', e);
+    }
+  };
+
+  // Auto-sync Effect
+  useEffect(() => {
+    if (!user) return;
+
+    const syncTimeout = setTimeout(async () => {
+      setSyncStatus('syncing');
+      try {
+        await Promise.all(openSermons.map(s => googleDriveManager.saveSermon(s)));
+        setSyncStatus('synced');
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      } catch (e) {
+        console.error('Cloud Sync failed:', e);
+        setSyncStatus('error');
+      }
+    }, 5000); // 5 second debounce for Google Drive sync
+
+    return () => clearTimeout(syncTimeout);
+  }, [openSermons, user]);
 
   useEffect(() => {
     localStorage.setItem('lumina-web-open-sermons', JSON.stringify(openSermons));
@@ -184,8 +282,11 @@ export default function Home() {
     setEditorRemountKey(prev => prev + 1);
   };
 
-  const handleDeleteSermon = (id: number) => {
+  const handleDeleteSermon = async (id: number) => {
     if (confirm('Are you sure you want to delete this sermon?')) {
+      if (user) {
+        await googleDriveManager.deleteSermon(id);
+      }
       setOpenSermons(prev => prev.filter(s => s.id !== id));
       if (activeSermonId === id) {
         setActiveSermonId(null);
@@ -210,6 +311,10 @@ export default function Home() {
       case 'theme-dark': setTheme('dark'); break;
       case 'ai-insights': window.dispatchEvent(new CustomEvent('trigger-ai')); break;
       case 'bible-search': window.dispatchEvent(new CustomEvent('trigger-bible')); break;
+      case 'prompter': window.dispatchEvent(new CustomEvent('trigger-prompter')); break;
+      case 'fullscreen': handleToggleFullScreen(); break;
+      case 'login': handleLogin(); break;
+      case 'logout': handleLogout(); break;
       default: console.log('Action not implemented:', actionId);
     }
   };
@@ -252,6 +357,8 @@ export default function Home() {
       onShortcutsChange={setShortcuts}
       onNewSermon={handleNewSermon}
       onAction={handleMenuAction}
+      user={user}
+      syncStatus={syncStatus}
     >
       <div className="flex-1 flex overflow-hidden relative">
         {activeSermonId === null ? (

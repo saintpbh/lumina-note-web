@@ -34,6 +34,7 @@
     "@types/lodash.debounce": "^4.0.9",
     "better-sqlite3": "^12.5.0",
     "clsx": "^2.1.1",
+    "firebase": "^12.7.0",
     "lodash.debounce": "^4.0.8",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.562.0",

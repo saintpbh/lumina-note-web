@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Folder, History as HistoryIcon, X, HelpCircle, Plus, ChevronLeft, Menu } from 'lucide-react';
+import { Settings, Folder, History as HistoryIcon, X, HelpCircle, Plus, ChevronLeft, Menu, LogIn, Cloud, CloudOff, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { ShortcutConfig } from '@/shared/types';
 import { MenuBar } from './MenuBar';
@@ -29,6 +29,8 @@ interface AppShellProps {
     onShortcutsChange: (shortcuts: ShortcutConfig) => void;
     onNewSermon: () => void;
     onAction?: (actionId: string) => void;
+    user?: any;
+    syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -55,7 +57,9 @@ export const AppShell: React.FC<AppShellProps> = ({
     shortcuts,
     onShortcutsChange,
     onNewSermon,
-    onAction
+    onAction,
+    user,
+    syncStatus = 'idle'
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -72,6 +76,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                     onAction={onAction || (() => { })}
                     activeDocumentId={activeDocumentId}
                     theme={theme}
+                    isLoggedIn={!!user}
                 />
             )}
 
@@ -163,21 +168,63 @@ export const AppShell: React.FC<AppShellProps> = ({
                             </div>
                         </nav>
 
-                        <div className="p-4 bg-gray-100/50 dark:bg-white/5 space-y-1">
-                            <button
-                                onClick={() => setIsSettingsOpen(true)}
-                                className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 text-sm transition-all"
-                            >
-                                <Settings size={18} />
-                                <span>Settings</span>
-                            </button>
-                            <button
-                                onClick={() => setIsHelpOpen(true)}
-                                className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 text-sm transition-all"
-                            >
-                                <HelpCircle size={18} />
-                                <span>Help Guide</span>
-                            </button>
+                        <div className="p-4 bg-gray-100/50 dark:bg-white/5 border-t border-gray-200 dark:border-white/5 space-y-4">
+                            {/* Cloud Sync Status */}
+                            {user ? (
+                                <div className="p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100/50 dark:border-blue-500/20">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-blue-600/20">
+                                            {user.displayName?.[0] || user.email?.[0] || 'U'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-bold truncate dark:text-blue-100">{user.displayName || 'User'}</p>
+                                            <div className="flex items-center gap-1">
+                                                {syncStatus === 'syncing' && <RefreshCw size={10} className="animate-spin text-blue-500" />}
+                                                {syncStatus === 'synced' && <CheckCircle2 size={10} className="text-emerald-500" />}
+                                                {syncStatus === 'error' && <AlertCircle size={10} className="text-red-500" />}
+                                                {syncStatus === 'idle' && <Cloud size={10} className="text-blue-500" />}
+                                                <span className="text-[9px] luxury-mono uppercase tracking-wider text-slate-400">
+                                                    {syncStatus === 'syncing' ? 'Syncing...' :
+                                                        syncStatus === 'synced' ? 'Desktop Synced' :
+                                                            syncStatus === 'error' ? 'Sync Error' : 'Google Drive Active'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => onAction?.('logout')}
+                                            className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/20 transition-all text-slate-400"
+                                            title="Logout"
+                                        >
+                                            <CloudOff size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => onAction?.('login')}
+                                    className="w-full flex items-center justify-center gap-2 py-3 text-xs font-bold rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/10 active:scale-[0.98] transition-all"
+                                >
+                                    <Cloud size={14} className="text-blue-500" />
+                                    <span>Sync with Desktop App</span>
+                                </button>
+                            )}
+
+                            <div className="space-y-1">
+                                <button
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 text-sm transition-all"
+                                >
+                                    <Settings size={18} />
+                                    <span>Settings</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsHelpOpen(true)}
+                                    className="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 text-sm transition-all"
+                                >
+                                    <HelpCircle size={18} />
+                                    <span>Help Guide</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
