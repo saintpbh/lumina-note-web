@@ -337,6 +337,22 @@ export const Editor = ({
         };
     }, [resetHideTimer]);
 
+    useEffect(() => {
+        const handlePrintEvent = () => handlePrint();
+        const handleAIEvent = () => setIsAIModalOpen(true);
+        const handleBibleEvent = () => setIsScriptureModalOpen(true);
+
+        window.addEventListener('trigger-print', handlePrintEvent);
+        window.addEventListener('trigger-ai', handleAIEvent);
+        window.addEventListener('trigger-bible', handleBibleEvent);
+
+        return () => {
+            window.removeEventListener('trigger-print', handlePrintEvent);
+            window.removeEventListener('trigger-ai', handleAIEvent);
+            window.removeEventListener('trigger-bible', handleBibleEvent);
+        };
+    }, [handlePrint]);
+
     if (!editor) return null;
 
     return (

@@ -7,6 +7,7 @@ import { SermonManager } from '@/components/sermons/SermonManager';
 import { SermonVersionSidebar } from '@/components/sermons/SermonVersionSidebar';
 import { ShortcutConfig, Sermon } from '@/shared/types';
 import { matchShortcut } from '@/utils/shortcutUtils';
+import { Dashboard } from '@/components/ui/Dashboard';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -108,6 +109,9 @@ export default function Home() {
         }
       } catch (e) { console.error(e); }
     }
+
+    const savedTheme = localStorage.getItem('lumina-web-theme');
+    if (savedTheme) setTheme(savedTheme as any);
   }, []);
 
   useEffect(() => {
@@ -117,6 +121,10 @@ export default function Home() {
   useEffect(() => {
     if (activeSermonId) localStorage.setItem('lumina-web-active-id', activeSermonId.toString());
   }, [activeSermonId]);
+
+  useEffect(() => {
+    localStorage.setItem('lumina-web-theme', theme);
+  }, [theme]);
 
   const handleSermonSelect = (sermon: Sermon) => {
     const existing = openSermons.find(s => s.id === sermon.id);
@@ -134,10 +142,6 @@ export default function Home() {
     setOpenSermons(newOpen);
     if (activeSermonId === id) {
       setActiveSermonId(newOpen.length > 0 ? newOpen[newOpen.length - 1].id : null);
-      if (newOpen.length === 0) {
-        setEditorState(USAGE_GUIDE);
-        setEditorRemountKey(prev => prev + 1);
-      }
     }
   };
 
@@ -170,14 +174,14 @@ export default function Home() {
     const newId = Date.now();
     const newSermon: Sermon = {
       id: newId,
-      title: 'Untitled',
-      content: '<p></p>',
+      title: 'Untitled Sermon',
+      content: '<h1></h1><p></p>',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
     setOpenSermons(prev => [...prev, newSermon]);
     setActiveSermonId(newId);
-    setEditorState('<p></p>');
+    setEditorRemountKey(prev => prev + 1);
   };
 
   const handleDeleteSermon = (id: number) => {
@@ -185,36 +189,40 @@ export default function Home() {
       setOpenSermons(prev => prev.filter(s => s.id !== id));
       if (activeSermonId === id) {
         setActiveSermonId(null);
-        setEditorState(USAGE_GUIDE);
-        setEditorRemountKey(prev => prev + 1);
       }
     }
   };
 
   const currentSermon = openSermons.find(s => s.id === activeSermonId);
-  const currentEditorContent = currentSermon ? currentSermon.content : editorState;
+  const currentEditorContent = currentSermon ? currentSermon.content : '';
+
+  const handleMenuAction = (actionId: string) => {
+    switch (actionId) {
+      case 'new': handleNewSermon(); break;
+      case 'open': setIsSermonManagerOpen(true); break;
+      case 'save': handleSaveSermon(); break;
+      case 'print': if (editorRef.current) { window.dispatchEvent(new CustomEvent('trigger-print')); } break;
+      case 'undo': editorRef.current?.commands.undo(); break;
+      case 'redo': editorRef.current?.commands.redo(); break;
+      case 'focus-mode': setIsFocusMode(!isFocusMode); break;
+      case 'theme-default': setTheme('default'); break;
+      case 'theme-sepia': setTheme('sepia'); break;
+      case 'theme-dark': setTheme('dark'); break;
+      case 'ai-insights': window.dispatchEvent(new CustomEvent('trigger-ai')); break;
+      case 'bible-search': window.dispatchEvent(new CustomEvent('trigger-bible')); break;
+      default: console.log('Action not implemented:', actionId);
+    }
+  };
 
   // Global Key Listeners for Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!e.isTrusted) return;
 
-      if (matchShortcut(e, shortcuts.new)) {
-        e.preventDefault();
-        handleNewSermon();
-      }
-      if (matchShortcut(e, shortcuts.open)) {
-        e.preventDefault();
-        setIsSermonManagerOpen(true);
-      }
-      if (matchShortcut(e, shortcuts.save)) {
-        e.preventDefault();
-        handleSaveSermon();
-      }
-      if (matchShortcut(e, shortcuts.focus)) {
-        e.preventDefault();
-        setIsFocusMode(prev => !prev);
-      }
+      if (matchShortcut(e, shortcuts.new)) { e.preventDefault(); handleNewSermon(); }
+      if (matchShortcut(e, shortcuts.open)) { e.preventDefault(); setIsSermonManagerOpen(true); }
+      if (matchShortcut(e, shortcuts.save)) { e.preventDefault(); handleSaveSermon(); }
+      if (matchShortcut(e, shortcuts.focus)) { e.preventDefault(); setIsFocusMode(prev => !prev); }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -242,36 +250,46 @@ export default function Home() {
       onViewModeChange={setViewMode}
       shortcuts={shortcuts}
       onShortcutsChange={setShortcuts}
+      onNewSermon={handleNewSermon}
+      onAction={handleMenuAction}
     >
       <div className="flex-1 flex overflow-hidden relative">
-        <Editor
-          onFocusModeChange={setIsFocusMode}
-          toolbarPosition='bottom'
-          isFocusMode={isFocusMode}
-          theme={theme}
-          onThemeChange={setTheme}
-          initialContent={currentEditorContent}
-          key={`editor-${activeSermonId !== null ? activeSermonId : 'empty'}-${editorRemountKey}`}
-          onContentChange={(content) => {
-            if (activeSermonId !== null) {
-              const newTitle = extractTitleFromHTML(content);
-              setOpenSermons(prev => prev.map(s =>
-                s.id === activeSermonId ? { ...s, content, title: newTitle } : s
-              ));
-            } else {
-              setEditorState(content);
-            }
-          }}
-          onEditorReady={(editor) => {
-            editorRef.current = editor;
-          }}
-          onOpenArchive={() => setIsSermonManagerOpen(true)}
-          onToggleVersions={() => setIsVersionsOpen(prev => !prev)}
-          shortcuts={shortcuts}
-          onShortcutsChange={setShortcuts}
-          onSave={handleSaveSermon}
-          onNew={handleNewSermon}
-        />
+        {activeSermonId === null ? (
+          <Dashboard
+            onNewSermon={handleNewSermon}
+            onOpenArchive={() => setIsSermonManagerOpen(true)}
+            recentSermons={openSermons}
+            onSelectSermon={(s) => setActiveSermonId(s.id)}
+            theme={theme}
+          />
+        ) : (
+          <Editor
+            onFocusModeChange={setIsFocusMode}
+            toolbarPosition='bottom'
+            isFocusMode={isFocusMode}
+            theme={theme}
+            onThemeChange={setTheme}
+            initialContent={currentEditorContent}
+            key={`editor-${activeSermonId}-${editorRemountKey}`}
+            onContentChange={(content) => {
+              if (activeSermonId !== null) {
+                const newTitle = extractTitleFromHTML(content);
+                setOpenSermons(prev => prev.map(s =>
+                  s.id === activeSermonId ? { ...s, content, title: newTitle } : s
+                ));
+              }
+            }}
+            onEditorReady={(editor) => {
+              editorRef.current = editor;
+            }}
+            onOpenArchive={() => setIsSermonManagerOpen(true)}
+            onToggleVersions={() => setIsVersionsOpen(prev => !prev)}
+            shortcuts={shortcuts}
+            onShortcutsChange={setShortcuts}
+            onSave={handleSaveSermon}
+            onNew={handleNewSermon}
+          />
+        )}
 
         <SermonVersionSidebar
           isOpen={isVersionsOpen}
