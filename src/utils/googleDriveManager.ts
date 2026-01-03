@@ -22,9 +22,12 @@ export interface GoogleUser {
 export class GoogleDriveManager {
     private accessToken: string | null = null;
     private appFolderId: string | null = null;
+    private simRevisions: Record<number, { id: string, modifiedTime: string, content: Sermon }[]> = {};
 
     setAccessToken(token: string | null) {
         this.accessToken = token;
+        // Reset simulation data on logout/login if needed
+        if (!token) this.simRevisions = {};
     }
 
     async getUserInfo(): Promise<GoogleUser | null> {
@@ -48,6 +51,7 @@ export class GoogleDriveManager {
         }
     }
 
+    // ... fetchDrive ...
     private async fetchDrive(endpoint: string, options: RequestInit = {}) {
         if (!this.accessToken) throw new Error('No access token');
 
@@ -71,6 +75,7 @@ export class GoogleDriveManager {
 
     async checkWorkspaceStatus(): Promise<{ folderId: string, isNewUser: boolean }> {
         if (this.appFolderId) return { folderId: this.appFolderId!, isNewUser: false };
+        if (this.accessToken === 'sim-token') return { folderId: 'sim-folder', isNewUser: false };
 
         const data = await this.fetchDrive(`/files?q=name='${APP_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`);
 
@@ -92,11 +97,14 @@ export class GoogleDriveManager {
 
     async ensureAppFolder(): Promise<string> {
         const { folderId } = await this.checkWorkspaceStatus();
-        await this.ensureSubfolder('sermons');
+        if (this.accessToken !== 'sim-token') {
+            await this.ensureSubfolder('sermons');
+        }
         return folderId;
     }
 
     private async ensureSubfolder(name: string): Promise<string> {
+        if (this.accessToken === 'sim-token') return 'sim-folder-' + name;
         const parentId = await this.ensureAppFolder();
         const data = await this.fetchDrive(`/files?q=name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`);
 
@@ -117,6 +125,7 @@ export class GoogleDriveManager {
 
     async listSermons(): Promise<Sermon[]> {
         if (this.accessToken === 'sim-token') {
+            // Return stored sims if any, else default
             return [
                 {
                     id: 999,
@@ -147,7 +156,16 @@ export class GoogleDriveManager {
 
     async saveSermon(sermon: Sermon) {
         if (this.accessToken === 'sim-token') {
-            console.log('[Sim] Saving sermon to cloud:', sermon.title);
+            // Stateful Simulation Store
+            if (!this.simRevisions[sermon.id]) {
+                this.simRevisions[sermon.id] = [];
+            }
+            this.simRevisions[sermon.id].push({
+                id: `sim-rev-${Date.now()}`,
+                modifiedTime: new Date().toISOString(),
+                content: { ...sermon }
+            });
+            console.log('[Sim] Saved revision to memory:', sermon.title);
             return;
         }
         const folderId = await this.ensureSubfolder('sermons');
@@ -205,6 +223,10 @@ export class GoogleDriveManager {
     }
 
     async deleteSermon(sermonId: number) {
+        if (this.accessToken === 'sim-token') {
+            delete this.simRevisions[sermonId];
+            return;
+        }
         const folderId = await this.ensureSubfolder('sermons');
         const fileName = `sermon_${sermonId}.json`;
         const data = await this.fetchDrive(`/files?q=name='${fileName}' and '${folderId}' in parents and trashed=false&fields=files(id)`);
@@ -213,6 +235,7 @@ export class GoogleDriveManager {
             await this.fetchDrive(`/files/${data.files[0].id}`, { method: 'DELETE' });
         }
     }
+
     async createWelcomeFile() {
         if (this.accessToken === 'sim-token') return;
 
@@ -235,6 +258,70 @@ export class GoogleDriveManager {
         };
 
         await this.saveSermon(welcomeSermon);
+    }
+
+    private async getFileId(sermonId: number): Promise<string | null> {
+        const folderId = await this.ensureSubfolder('sermons');
+        const fileName = `sermon_${sermonId}.json`;
+        const data = await this.fetchDrive(`/files?q=name='${fileName}' and '${folderId}' in parents and trashed=false&fields=files(id)`);
+
+        return data.files && data.files.length > 0 ? data.files[0].id : null;
+    }
+
+    async listRevisions(sermonId: number): Promise<any[]> {
+        if (this.accessToken === 'sim-token') {
+            // Return stored stateful sims
+            if (this.simRevisions[sermonId]) {
+                return this.simRevisions[sermonId].map(r => ({
+                    id: r.id,
+                    modifiedTime: r.modifiedTime,
+                    lastModifyingUser: { displayName: 'Saint PBH' }
+                }));
+            }
+            return [
+                { id: 'rev-1', modifiedTime: new Date(Date.now() - 3600000).toISOString(), lastModifyingUser: { displayName: 'Saint PBH' } },
+                { id: 'rev-2', modifiedTime: new Date(Date.now() - 1800000).toISOString(), lastModifyingUser: { displayName: 'Saint PBH' } },
+                { id: 'rev-3', modifiedTime: new Date().toISOString(), lastModifyingUser: { displayName: 'Saint PBH' } }
+            ];
+        }
+
+        const fileId = await this.getFileId(sermonId);
+        if (!fileId) return [];
+
+        try {
+            const data = await this.fetchDrive(`/files/${fileId}/revisions?fields=revisions(id,modifiedTime,lastModifyingUser)`);
+            return data.revisions || [];
+        } catch (e) {
+            console.error('Failed to list revisions:', e);
+            return [];
+        }
+    }
+
+    async getRevisionContent(sermonId: number, revisionId: string): Promise<Sermon | null> {
+        if (this.accessToken === 'sim-token') {
+            const stored = this.simRevisions[sermonId]?.find(r => r.id === revisionId);
+            if (stored) return stored.content;
+
+            return {
+                id: sermonId,
+                title: 'Restored Version (Mock)',
+                content: `<h1>Restored Content</h1><p>This is a simulation of revision ${revisionId}.</p>`,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                tags: 'restored'
+            };
+        }
+
+        const fileId = await this.getFileId(sermonId);
+        if (!fileId) return null;
+
+        try {
+            const content = await this.fetchDrive(`/files/${fileId}/revisions/${revisionId}?alt=media`);
+            return content;
+        } catch (e) {
+            console.error('Failed to get revision content:', e);
+            return null;
+        }
     }
 }
 

@@ -227,8 +227,22 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
 
             {activeDocumentId ? (
                 <div className="flex items-center gap-2 text-[10px] font-medium opacity-50">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    <span>Autosaved to Browser Storage</span>
+                    <div className={cn(
+                        "w-1.5 h-1.5 rounded-full animate-pulse",
+                        user
+                            ? (syncStatus === 'synced' ? "bg-green-500" : syncStatus === 'syncing' ? "bg-blue-500" : "bg-red-500")
+                            : "bg-orange-500"
+                    )} />
+                    {user ? (
+                        <span>
+                            {syncStatus === 'synced' && 'Saved to Google Drive'}
+                            {syncStatus === 'syncing' && 'Syncing to Cloud...'}
+                            {syncStatus === 'error' && 'Sync Error'}
+                            {syncStatus === 'idle' && 'Cloud Connected'}
+                        </span>
+                    ) : (
+                        <span>Saved to Browser Storage</span>
+                    )}
                 </div>
             ) : (
                 <div className="flex items-center gap-2 text-[10px] font-medium opacity-50">

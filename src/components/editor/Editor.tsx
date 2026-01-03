@@ -20,7 +20,7 @@ import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import debounce from 'lodash.debounce';
 
 import { EditorToolbar } from './EditorToolbar';
@@ -55,12 +55,15 @@ interface EditorProps {
     onOpenArchive?: () => void;
     onToggleVersions?: () => void;
     onSave?: (html: string, filePath: string | null) => void;
+    onInstantSave?: () => void;
+    onImport?: () => void;
+    onExport?: () => void;
     onNew?: () => void;
     shortcuts: ShortcutConfig;
     onShortcutsChange: (shortcuts: ShortcutConfig) => void;
 }
 
-export const Editor = ({
+export const Editor = forwardRef(({
     initialContent: _initialContent,
     onFocusModeChange,
     toolbarPosition: _toolbarPosition = 'bottom',
@@ -72,10 +75,13 @@ export const Editor = ({
     onOpenArchive,
     onToggleVersions,
     onSave,
+    onInstantSave,
+    onImport,
+    onExport,
     onNew,
     shortcuts,
     onShortcutsChange
-}: EditorProps) => {
+}: EditorProps, ref) => {
     const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
     const [isScriptureModalOpen, setIsScriptureModalOpen] = useState(false);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -148,85 +154,34 @@ export const Editor = ({
             openOnClick: false,
             HTMLAttributes: {
                 class: 'text-blue-600 dark:text-blue-400 underline cursor-pointer hover:text-blue-800 dark:hover:text-blue-300 transition-colors',
-            },
-        }),
-        CodeBlockLowlight.configure({
-            lowlight,
-            HTMLAttributes: {
-                class: 'code-block-highlighted bg-gray-100 dark:bg-gray-800 p-4 rounded-lg my-4 overflow-x-auto',
-            },
-        }),
-        Placeholder.configure({
-            placeholder: ({ node }) => {
-                if (node.type.name === 'heading' && node.attrs.level === 1) return 'Enter title here';
-                return 'Start writing your sermon...';
             }
         }),
+        CodeBlockLowlight.configure({ lowlight }),
         CustomImage.configure({
-            allowBase64: true,
-            HTMLAttributes: { class: 'my-4 mx-auto block' },
+            HTMLAttributes: { class: 'custom-image' }
         }),
-        Table.configure({
-            resizable: true,
-            cellMinWidth: 80,
-            HTMLAttributes: {
-                class: 'border-collapse table-auto w-full my-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden',
-            },
-        }),
-        TableRow, TableHeader, TableCell,
-        TextStyle, FontFamily, Color,
-        Extension.create({
-            name: 'fontSize',
-            addGlobalAttributes() {
-                return [
-                    {
-                        types: ['textStyle'],
-                        attributes: {
-                            fontSize: {
-                                default: null,
-                                parseHTML: (element: HTMLElement) => element.style.fontSize,
-                                renderHTML: attributes => {
-                                    if (!attributes.fontSize) return {};
-                                    return { style: `font-size: ${attributes.fontSize}` };
-                                },
-                            },
-                        },
-                    },
-                ];
-            },
-        }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        TextStyle,
+        Color,
         Highlight.configure({ multicolor: true }),
-        LineHeight, LetterSpacing, Footnote, PageBreak,
-        PageSpacer.extend({
-            addKeyboardShortcuts() {
-                return {
-                    'Alt-Enter': () => {
-                        const { pageCount: currentCount } = calculatePages(this.editor, paperSizeRef.current);
-                        return this.editor.chain()
-                            .insertContent({
-                                type: this.name,
-                                attrs: {
-                                    height: `${editorSettingsRef.current.pageSpacerHeight}mm`,
-                                    pageNumber: currentCount + 1
-                                }
-                            })
-                            .focus()
-                            .run();
-                    },
-                };
-            },
-        }),
-        TextAlign.configure({
-            types: ['heading', 'paragraph', 'image'],
-            alignments: ['left', 'center', 'right', 'justify'],
-        }),
-    ], []);
+        FontFamily,
+        TextAlign.configure({ types: ['heading', 'paragraph', 'image', 'custom-image'] }),
+        LineHeight,
+        LetterSpacing,
+        Footnote,
+        PageBreak,
+        PageSpacer,
+    ], [lowlight]);
 
     const editor = useEditor({
         extensions,
         content: _initialContent !== undefined ? _initialContent : '',
         autofocus: 'end',
         onUpdate: async ({ editor }) => {
+            // ... (update logic)
             if (!editor || editor.isDestroyed || !editor.view || !editor.view.dom) return;
 
             const html = editor.getHTML();
@@ -239,7 +194,9 @@ export const Editor = ({
             const newCount = await applyPageGaps(editor, paperSizeRef.current);
             if (newCount) setPageCount(newCount);
 
+            // ... (typewriter)
             if (editorSettingsRef.current.centerCursorOnType) {
+                // ... (existing scroll logic)
                 requestAnimationFrame(() => {
                     if (!editor || editor.isDestroyed || !editor.view || !editor.view.dom) return;
                     try {
@@ -250,25 +207,25 @@ export const Editor = ({
                         if (container && coords) {
                             const containerRect = container.getBoundingClientRect();
                             const cursorY = coords.top;
-
-                            // Target 40% from the top of the viewport for eye-level typing
                             const targetY = containerRect.top + (containerRect.height * 0.4);
                             const diff = cursorY - targetY;
-
-                            if (Math.abs(diff) > 2) { // Only scroll if needed
-                                container.scrollBy({
-                                    top: diff,
-                                    behavior: 'auto' // Use auto for instant typewriter feel
-                                });
+                            if (Math.abs(diff) > 2) {
+                                container.scrollBy({ top: diff, behavior: 'auto' });
                             }
                         }
-                    } catch (e) {
-                        console.error('Typewriter scroll failed:', e);
-                    }
+                    } catch (e) { }
                 });
             }
         },
         editorProps: {
+            handleKeyDown: (view, event) => {
+                if (event.key === 'Enter') {
+                    // Trigger instant save on Enter (user request)
+                    onInstantSave?.();
+                }
+                // Allow default behavior
+                return false;
+            },
             attributes: {
                 class: 'focus:outline-none min-h-full selection:bg-blue-100 dark:selection:bg-blue-500/30',
                 style: "font-family: 'KoPub Batang', serif;",
@@ -280,6 +237,8 @@ export const Editor = ({
         },
         immediatelyRender: false,
     });
+
+    useImperativeHandle(ref, () => editor, [editor]);
 
     useEffect(() => {
         if (editor && onEditorReady) onEditorReady(editor);
@@ -319,31 +278,13 @@ export const Editor = ({
         fileInputRef.current?.click();
     }, []);
 
-    const handleToggleFocus = async () => {
-        if (!onFocusModeChange) return;
-
-        const newFocusState = !isFocusMode;
-        onFocusModeChange(newFocusState);
-
-        try {
-            if (newFocusState) {
-                if (document.documentElement.requestFullscreen) {
-                    await document.documentElement.requestFullscreen();
-                }
-            } else {
-                if (document.fullscreenElement) {
-                    await document.exitFullscreen();
-                }
-            }
-        } catch (err) {
-            console.error('Fullscreen toggle failed:', err);
-        }
+    const handleToggleFocus = () => {
+        onFocusModeChange && onFocusModeChange(!isFocusMode);
     };
 
     const handleInsertScripture = (verse: BibleVerse) => {
         if (!editor) return;
 
-        // Use a cleaner HTML structure without extra whitespace from indentation
         const html = `<div class="bible-verse-insert my-6 p-5 bg-blue-50/40 dark:bg-blue-900/10 border-l-[6px] border-blue-500 rounded-r-2xl shadow-sm">` +
             `<div class="flex items-center gap-2 mb-2 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] luxury-mono">` +
             `<span class="w-2 h-2 rounded-full bg-blue-500/20"></span>` +
@@ -415,12 +356,14 @@ export const Editor = ({
                             transformOrigin: 'top center'
                         }}
                     >
-                        <div className={cn(
-                            "paper shadow-2xl relative",
-                            paperSize === 'a4' ? "paper-a4" : "paper-b5",
-                            viewMode === 'editing' ? "editing-mode" : "print-mode",
-                            theme
-                        )}>
+                        <div
+                            id="lumina-paper-export"
+                            className={cn(
+                                "paper shadow-2xl relative",
+                                paperSize === 'a4' ? "paper-a4" : "paper-b5",
+                                viewMode === 'editing' ? "editing-mode" : "print-mode",
+                                theme
+                            )}>
                             <EditorContent editor={editor} />
 
                         </div>
@@ -449,6 +392,9 @@ export const Editor = ({
                             onViewModeChange={setViewMode}
                             onPrint={handlePrint}
                             onSave={() => onSave && onSave(editor.getHTML(), currentFilePath)}
+                            onImport={onImport}
+                            onExport={onExport}
+                            onOpenPrompter={() => setIsPrompterOpen(true)}
                             onOpenScripture={() => setIsScriptureModalOpen(true)}
                             onOpenAI={() => setIsAIModalOpen(true)}
                             onOpenInsights={() => setIsInsightsOpen(true)}
@@ -506,4 +452,4 @@ export const Editor = ({
             )}
         </div>
     );
-};
+});

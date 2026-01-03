@@ -30,7 +30,9 @@ import {
     ZoomIn,
     ZoomOut,
     RotateCcw,
-    Presentation
+    Presentation,
+    Download,
+    Upload
 } from 'lucide-react';
 import { formatTime } from '../../utils/sermonUtils';
 import { useState } from 'react';
@@ -40,6 +42,8 @@ import { cn } from '@/utils/cn';
 interface EditorToolbarProps {
     editor: Editor | null;
     onSave: () => void;
+    onImport?: () => void;
+    onExport?: () => void;
     onPrint: () => void;
     onOpenScripture: () => void;
     onOpenAI: () => void;
@@ -71,6 +75,8 @@ const LUXURY_COLORS = [
 export const EditorToolbar = ({
     editor,
     onSave,
+    onImport,
+    onExport,
     onPrint,
     onOpenScripture,
     onOpenAI,
@@ -562,6 +568,24 @@ export const EditorToolbar = ({
                                 title="Prompter Mode"
                             >
                                 <Presentation size={16} />
+                            </button>
+                        )}
+                        {onImport && (
+                            <button
+                                onClick={onImport}
+                                className="p-2 rounded-lg luxury-toolbar-item hover:theme-accent transition-colors"
+                                title="Import File"
+                            >
+                                <Upload size={16} />
+                            </button>
+                        )}
+                        {onExport && (
+                            <button
+                                onClick={onExport}
+                                className="p-2 rounded-lg luxury-toolbar-item hover:theme-accent transition-colors"
+                                title="Export File"
+                            >
+                                <Download size={16} />
                             </button>
                         )}
                         <button

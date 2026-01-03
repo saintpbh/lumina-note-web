@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Editor } from '@/components/editor/Editor';
 import { SermonManager } from '@/components/sermons/SermonManager';
@@ -16,6 +16,9 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { WelcomeMessageModal } from '@/components/ui/WelcomeMessageModal';
 import { Analytics } from '@/utils/analytics';
 import { ACTIVE_ANNOUNCEMENT } from '@/config/announcements';
+import { ExportModal, ExportFormat } from '@/components/io/ExportModal';
+import { importFile } from '@/utils/importEngine';
+import { exportDocument } from '@/utils/exportEngine';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -80,6 +83,7 @@ export default function Home() {
   const [authStatus, setAuthStatus] = useState<'idle' | 'checking' | 'creating' | 'welcome' | 'success'>('idle');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const editorRef = useRef<any>(null);
 
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
@@ -261,24 +265,34 @@ export default function Home() {
     }
   };
 
+  const [lastCloudSync, setLastCloudSync] = useState<string | null>(null);
+
+  // ... (previous code)
+
+  const executeCloudSync = useCallback(async (sermonsToSync: Sermon[]) => {
+    if (!user) return;
+    setSyncStatus('syncing');
+    try {
+      await Promise.all(sermonsToSync.map(s => googleDriveManager.saveSermon(s)));
+      setSyncStatus('synced');
+      setLastCloudSync(new Date().toISOString());
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } catch (e) {
+      console.error('Cloud Sync failed:', e);
+      setSyncStatus('error');
+    }
+  }, [user]);
+
   // Auto-sync Effect
   useEffect(() => {
     if (!user) return;
 
-    const syncTimeout = setTimeout(async () => {
-      setSyncStatus('syncing');
-      try {
-        await Promise.all(openSermons.map(s => googleDriveManager.saveSermon(s)));
-        setSyncStatus('synced');
-        setTimeout(() => setSyncStatus('idle'), 3000);
-      } catch (e) {
-        console.error('Cloud Sync failed:', e);
-        setSyncStatus('error');
-      }
-    }, 5000); // 5 second debounce for Google Drive sync
+    const syncTimeout = setTimeout(() => {
+      executeCloudSync(openSermons);
+    }, 10000); // 10 second debounce for Google Drive sync
 
     return () => clearTimeout(syncTimeout);
-  }, [openSermons, user]);
+  }, [openSermons, user, executeCloudSync]);
 
   useEffect(() => {
     localStorage.setItem('lumina-web-open-sermons', JSON.stringify(openSermons));
@@ -301,6 +315,7 @@ export default function Home() {
       setActiveSermonId(sermon.id);
     }
     setIsSermonManagerOpen(false);
+    setIsVersionsOpen(true);
   };
 
   const handleCloseSermon = (id: number) => {
@@ -311,17 +326,18 @@ export default function Home() {
     }
   };
 
-  const handleSaveSermon = (content?: string) => {
+  const handleSaveSermon = (content?: string, forceSync = false) => {
     const active = openSermons.find(s => s.id === activeSermonId);
     const htmlToSave = content || (active ? active.content : editorState);
     if (!htmlToSave) return;
 
     const title = extractTitleFromHTML(htmlToSave);
+    let updatedList: Sermon[] = [];
 
     if (active) {
-      setOpenSermons(prev => prev.map(s =>
+      updatedList = openSermons.map(s =>
         s.id === active.id ? { ...s, title, content: htmlToSave, updated_at: new Date().toISOString() } : s
-      ));
+      );
     } else {
       const newId = Date.now();
       const newSermon: Sermon = {
@@ -331,8 +347,49 @@ export default function Home() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
+      updatedList = [...openSermons, newSermon];
+      setActiveSermonId(newId);
+    }
+
+    setOpenSermons(updatedList);
+    if (forceSync) {
+      executeCloudSync(updatedList);
+    }
+  };
+
+  const handleExport = async (format: ExportFormat, filename: string) => {
+    if (!editorRef.current) return;
+    const html = editorRef.current.getHTML();
+    await exportDocument(html, format, filename, 'lumina-paper-export');
+    setIsExportModalOpen(false);
+  };
+
+  const handleImportClick = () => {
+    document.getElementById('import-input')?.click();
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { content, title } = await importFile(file);
+      const newId = Date.now();
+      const newSermon: Sermon = {
+        id: newId,
+        title: title || 'Imported Sermon',
+        content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
       setOpenSermons(prev => [...prev, newSermon]);
       setActiveSermonId(newId);
+      setIsVersionsOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import file.');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -348,6 +405,7 @@ export default function Home() {
     setOpenSermons(prev => [...prev, newSermon]);
     setActiveSermonId(newId);
     setEditorRemountKey(prev => prev + 1);
+    setIsVersionsOpen(true);
   };
 
   const handleLoadSamples = () => {
@@ -459,6 +517,19 @@ export default function Home() {
           localStorage.setItem('lumina_last_announcement', ACTIVE_ANNOUNCEMENT.id);
         }}
       />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        defaultFilename={openSermons.find(s => s.id === activeSermonId)?.title || 'My Sermon'}
+      />
+      <input
+        type="file"
+        id="import-input"
+        className="hidden"
+        accept=".md,.markdown,.docx,.txt,.pdf,.hwp"
+        onChange={handleFileImport}
+      />
       <div className="flex-1 flex overflow-hidden relative">
         {activeSermonId === null ? (
           <Dashboard
@@ -493,8 +564,12 @@ export default function Home() {
             onToggleVersions={() => setIsVersionsOpen(prev => !prev)}
             shortcuts={shortcuts}
             onShortcutsChange={setShortcuts}
-            onSave={handleSaveSermon}
+            onSave={(content) => handleSaveSermon(content, false)}
+            onInstantSave={() => handleSaveSermon(undefined, true)}
+            onImport={handleImportClick}
+            onExport={() => setIsExportModalOpen(true)}
             onNew={handleNewSermon}
+            ref={editorRef}
           />
         )}
 
@@ -503,11 +578,24 @@ export default function Home() {
           onClose={() => setIsVersionsOpen(false)}
           currentSermonId={activeSermonId}
           onRestoreVersion={(version) => {
+            // Update editor content
             if (editorRef.current) {
+              // Preserve scroll position
+              const container = document.querySelector('.paper-container');
+              const savedScrollTop = container?.scrollTop;
+
               editorRef.current.commands.setContent(version.content);
+
+              if (container && savedScrollTop !== undefined) {
+                // Restore scroll after render
+                requestAnimationFrame(() => {
+                  container.scrollTop = savedScrollTop;
+                });
+              }
             }
-            setIsVersionsOpen(false);
+            // Sidebar remains open
           }}
+          lastSynced={lastCloudSync || undefined}
         />
       </div>
 
