@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/utils/cn';
+import { ThemeId, THEMES } from '@/utils/themes';
 import {
     FileText, Edit3, Settings, HelpCircle, Plus, FolderOpen,
     Save, Download, Printer, Undo2, Redo2, Scissors,
@@ -12,7 +13,7 @@ import {
 interface MenuBarProps {
     onAction: (actionId: string) => void;
     activeDocumentId: number | null;
-    theme: string;
+    theme: ThemeId;
     isLoggedIn?: boolean;
 }
 
@@ -34,6 +35,8 @@ interface MenuSection {
 export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, theme, isLoggedIn }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    const isDark = THEMES.find(t => t.id === theme)?.type === 'dark';
 
     const menus: MenuSection[] = [
         {
@@ -71,10 +74,14 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                 { id: 'toggle-sidebar', label: 'Sidebar', icon: <Layout size={14} />, shortcut: 'Alt+\\' },
                 { id: 'fullscreen', label: 'Toggle Full Screen', icon: <Maximize2 size={14} />, shortcut: 'F11' },
                 { id: 'focus-mode', label: 'Focus Mode', icon: <Maximize2 size={14} />, shortcut: 'Alt+Shift+F' },
+                { id: 'focus-mode', label: 'Focus Mode', icon: <Maximize2 size={14} />, shortcut: 'Alt+Shift+F' },
                 { id: 'divider1', label: '', divider: true },
-                { id: 'theme-default', label: 'Theme: Default', icon: <Palette size={14} /> },
-                { id: 'theme-sepia', label: 'Theme: Sepia', icon: <Palette size={14} /> },
-                { id: 'theme-dark', label: 'Theme: Dark', icon: <Palette size={14} /> },
+                // Dynamically generate theme items from THEMES
+                ...THEMES.map(t => ({
+                    id: t.id, // Action ID will be the theme ID. page.tsx handleMenuAction needs to handle this.
+                    label: `Theme: ${t.label}`,
+                    icon: <Palette size={14} />
+                }))
             ]
         },
         {
@@ -127,7 +134,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
             ref={menuRef}
             className={cn(
                 "h-8 flex items-center px-4 select-none border-b transition-all duration-300 backdrop-blur-md z-[100]",
-                theme === 'dark'
+                isDark
                     ? "bg-[#1C1C1E]/80 border-white/5 text-slate-300"
                     : "bg-white/80 border-gray-200 text-slate-700"
             )}
@@ -141,8 +148,8 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                             className={cn(
                                 "px-3 py-1 text-xs font-medium rounded transition-colors",
                                 openMenu === menu.id
-                                    ? (theme === 'dark' ? "bg-white/10 text-white" : "bg-gray-100 text-black")
-                                    : (theme === 'dark' ? "hover:bg-white/5" : "hover:bg-gray-100")
+                                    ? (isDark ? "bg-white/10 text-white" : "bg-gray-100 text-black")
+                                    : (isDark ? "hover:bg-white/5" : "hover:bg-gray-100")
                             )}
                         >
                             {menu.label}
@@ -152,14 +159,14 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                             <div
                                 className={cn(
                                     "absolute top-full left-0 mt-1 w-56 rounded-lg shadow-2xl border p-1 animate-in fade-in slide-in-from-top-2 duration-150",
-                                    theme === 'dark'
+                                    isDark
                                         ? "bg-[#2C2C2E]/95 border-white/10"
                                         : "bg-white/95 border-gray-200"
                                 )}
                             >
                                 {menu.items.map((item, idx) => (
                                     item.divider ? (
-                                        <div key={`div-${idx}`} className={cn("my-1 border-t", theme === 'dark' ? "border-white/5" : "border-gray-100")} />
+                                        <div key={`div-${idx}`} className={cn("my-1 border-t", isDark ? "border-white/5" : "border-gray-100")} />
                                     ) : (
                                         <button
                                             key={item.id}
@@ -169,7 +176,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                                                 "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded transition-all",
                                                 item.disabled
                                                     ? "opacity-30 cursor-not-allowed"
-                                                    : theme === 'dark'
+                                                    : isDark
                                                         ? "hover:bg-blue-600 text-slate-200 hover:text-white"
                                                         : "hover:bg-blue-600 text-slate-700 hover:text-white"
                                             )}

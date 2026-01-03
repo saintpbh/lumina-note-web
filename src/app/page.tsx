@@ -9,6 +9,9 @@ import { ShortcutConfig, Sermon } from '@/shared/types';
 import { matchShortcut } from '@/utils/shortcutUtils';
 import { Dashboard } from '@/components/ui/Dashboard';
 import { googleDriveManager, GoogleUser } from '@/utils/googleDriveManager';
+import { getSampleSermons } from '@/utils/sampleSermons';
+import { ThemeManager } from '@/components/layout/ThemeManager';
+import { ThemeId, THEMES } from '@/utils/themes';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -64,7 +67,7 @@ export default function Home() {
   const [isSermonManagerOpen, setIsSermonManagerOpen] = useState(false);
   const [editorState, setEditorState] = useState<string>(USAGE_GUIDE);
   const [editorRemountKey, setEditorRemountKey] = useState(0);
-  const [theme, setTheme] = useState<'default' | 'sepia' | 'dark' | 'blue'>('default');
+  const [theme, setTheme] = useState<ThemeId>('warm-paper');
   const [paperSize, setPaperSize] = useState<'a4' | 'b5'>('a4');
   const [viewMode, setViewMode] = useState<'editing' | 'print'>('editing');
   const [printMargins, setPrintMargins] = useState({ top: 20, right: 20, bottom: 20, left: 20 });
@@ -282,6 +285,19 @@ export default function Home() {
     setEditorRemountKey(prev => prev + 1);
   };
 
+  const handleLoadSamples = () => {
+    const samples = getSampleSermons();
+    // Filter out samples that might already exist (by checking ID collision possibilities, though unlikely with Date.now())
+    // Simply appending them
+    setOpenSermons(prev => {
+      // Create a map to avoid duplicates if user clicks multiple times? 
+      // For simplicity, we just add them. The IDs should be unique enough relative to existing ones.
+      // Actually, let's offset their IDs to ensure they are unique relative to "now"
+      return [...prev, ...samples];
+    });
+    alert("3 Sample Sermons Loaded!");
+  };
+
   const handleDeleteSermon = async (id: number) => {
     if (confirm('Are you sure you want to delete this sermon?')) {
       if (user) {
@@ -306,16 +322,20 @@ export default function Home() {
       case 'undo': editorRef.current?.commands.undo(); break;
       case 'redo': editorRef.current?.commands.redo(); break;
       case 'focus-mode': setIsFocusMode(!isFocusMode); break;
-      case 'theme-default': setTheme('default'); break;
-      case 'theme-sepia': setTheme('sepia'); break;
-      case 'theme-dark': setTheme('dark'); break;
-      case 'ai-insights': window.dispatchEvent(new CustomEvent('trigger-ai')); break;
+      case 'fullscreen': handleToggleFullScreen(); break;
+      case 'login': handleLogin(); break;
       case 'bible-search': window.dispatchEvent(new CustomEvent('trigger-bible')); break;
       case 'prompter': window.dispatchEvent(new CustomEvent('trigger-prompter')); break;
       case 'fullscreen': handleToggleFullScreen(); break;
       case 'login': handleLogin(); break;
       case 'logout': handleLogout(); break;
-      default: console.log('Action not implemented:', actionId);
+      default:
+        // Dynamic Theme Handling
+        if (THEMES.some(t => t.id === actionId)) {
+          setTheme(actionId as ThemeId);
+          break;
+        }
+        console.log('Action not implemented:', actionId);
     }
   };
 
@@ -360,6 +380,7 @@ export default function Home() {
       user={user}
       syncStatus={syncStatus}
     >
+      <ThemeManager theme={theme} />
       <div className="flex-1 flex overflow-hidden relative">
         {activeSermonId === null ? (
           <Dashboard
@@ -367,6 +388,7 @@ export default function Home() {
             onOpenArchive={() => setIsSermonManagerOpen(true)}
             recentSermons={openSermons}
             onSelectSermon={(s) => setActiveSermonId(s.id)}
+            onLoadSamples={handleLoadSamples}
             theme={theme}
           />
         ) : (

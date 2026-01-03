@@ -41,14 +41,15 @@ import { applyPageGaps } from '@/utils/pageGapManager';
 import { matchShortcut } from '@/utils/shortcutUtils';
 import { ScriptureModal } from '../scripture/ScriptureModal';
 import { PrompterOverlay } from '../prompter/PrompterOverlay';
+import { ThemeId } from '@/utils/themes';
 
 interface EditorProps {
     initialContent?: string;
     onFocusModeChange?: (isFocusMode: boolean) => void;
     toolbarPosition?: 'top' | 'bottom';
     isFocusMode: boolean;
-    theme: 'default' | 'sepia' | 'dark' | 'blue';
-    onThemeChange: (theme: 'default' | 'sepia' | 'dark' | 'blue') => void;
+    theme: ThemeId;
+    onThemeChange: (theme: ThemeId) => void;
     onContentChange?: (content: string) => void;
     onEditorReady?: (editor: any) => void;
     onOpenArchive?: () => void;

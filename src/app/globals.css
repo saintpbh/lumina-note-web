@@ -180,46 +180,7 @@ body {
   text-decoration: underline;
 }
 
-[data-theme='sepia'] {
-  --editor-bg: #f4ecd8;
-  --paper-bg: #fdf6e3;
-  --text-main: #433422;
-  --text-muted: #8c7a65;
-  --toolbar-bg: rgba(244, 236, 216, 0.9);
-  --toolbar-border: rgba(67, 52, 34, 0.1);
-  --accent-color: #8b4513;
-  --bg-subtle: rgba(67, 52, 34, 0.05);
-  --page-break-color: #e5d5b7;
-}
-
-.dark {
-  --bg-main: #121212;
-  --bg-subtle: #1c1c1e;
-  --bg-accent: #2c2c2e;
-  --paper-bg: #1e1e1e;
-  --text-main: #f9fafb;
-  /* High contrast white */
-  --text-secondary: #e5e7eb;
-  --text-muted: #9ca3af;
-  --accent-color: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.25);
-  --border-color: rgba(255, 255, 255, 0.15);
-  /* Stronger border for visibility */
-  --toolbar-bg: rgba(30, 30, 30, 0.95);
-  --toolbar-border: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme='blue'] {
-  --editor-bg: #e0e7ff;
-  --paper-bg: #ffffff;
-  --text-main: #1e3a8a;
-  --text-muted: #60a5fa;
-  --toolbar-bg: rgba(224, 231, 255, 0.9);
-  --toolbar-border: rgba(30, 58, 138, 0.1);
-  --accent-color: #4f46e5;
-  --bg-subtle: rgba(30, 58, 138, 0.05);
-  --page-break-color: #c7d2fe;
-}
+/* Legacy theme blocks removed. Controlled by ThemeManager via CSS variables. */
 
 /* Luxury Typewriter Typography */
 .luxury-serif {

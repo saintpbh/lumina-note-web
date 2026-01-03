@@ -34,6 +34,8 @@ import {
 } from 'lucide-react';
 import { formatTime } from '../../utils/sermonUtils';
 import { useState } from 'react';
+import { ThemeId, THEMES } from '@/utils/themes';
+import { cn } from '@/utils/cn';
 
 interface EditorToolbarProps {
     editor: Editor | null;
@@ -47,8 +49,8 @@ interface EditorToolbarProps {
     onOpenPrompter?: () => void;
     paperSize: 'a4' | 'b5';
     onPaperSizeChange: (size: 'a4' | 'b5') => void;
-    theme: string;
-    onThemeChange: (theme: any) => void;
+    theme: ThemeId;
+    onThemeChange: (theme: ThemeId) => void;
     isFocusMode: boolean;
     onToggleFocusMode: () => void;
     readingTime: number;
@@ -90,6 +92,7 @@ export const EditorToolbar = ({
     onViewModeChange,
 }: EditorToolbarProps) => {
     const [showColors, setShowColors] = useState(false);
+    const [showThemes, setShowThemes] = useState(false);
     const [showTableGrid, setShowTableGrid] = useState(false);
     const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
 
@@ -418,17 +421,71 @@ export const EditorToolbar = ({
                     {viewMode === 'editing' ? '🖨️ 인쇄' : '✏️ 편집'}
                 </button>
 
-                <button
-                    onClick={() => {
-                        const themes: any[] = ['default', 'sepia', 'dark', 'blue'];
-                        const next = themes[(themes.indexOf(theme) + 1) % themes.length];
-                        onThemeChange(next);
-                    }}
-                    className="p-2 rounded-lg luxury-toolbar-item"
-                    title="Switch Vibe"
-                >
-                    <Palette size={16} />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => {
+                            setShowThemes(!showThemes);
+                            setShowColors(false);
+                            setShowTableGrid(false);
+                        }}
+                        className="p-2 rounded-lg luxury-toolbar-item"
+                        title="Change Eye-Comfort Theme"
+                    >
+                        <Palette size={16} />
+                    </button>
+
+                    {showThemes && (
+                        <div className="absolute bottom-full right-0 mb-2 p-3 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 z-50 animate-in fade-in zoom-in-95 duration-200 w-64">
+                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">Light Themes</div>
+                            <div className="grid grid-cols-1 gap-1 mb-3">
+                                {THEMES.filter(t => t.type === 'light').map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => {
+                                            onThemeChange(t.id);
+                                            setShowThemes(false);
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all text-xs font-medium",
+                                            theme === t.id ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+                                        )}
+                                    >
+                                        <div
+                                            className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
+                                            style={{ backgroundColor: t.colors.editorBg }}
+                                        />
+                                        <span>{t.label}</span>
+                                        {theme === t.id && <Check size={12} className="ml-auto" />}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">Dark Themes</div>
+                            <div className="grid grid-cols-1 gap-1">
+                                {THEMES.filter(t => t.type === 'dark').map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => {
+                                            onThemeChange(t.id);
+                                            setShowThemes(false);
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all text-xs font-medium",
+                                            theme === t.id ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+                                        )}
+                                    >
+                                        <div
+                                            className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
+                                            style={{ backgroundColor: t.colors.editorBg }}
+                                        />
+                                        <span>{t.label}</span>
+                                        {theme === t.id && <Check size={12} className="ml-auto" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 <button
                     onClick={onToggleFocusMode}

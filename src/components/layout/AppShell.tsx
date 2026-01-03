@@ -3,14 +3,15 @@ import { Settings, Folder, History as HistoryIcon, X, HelpCircle, Plus, ChevronL
 import clsx from 'clsx';
 import { ShortcutConfig } from '@/shared/types';
 import { MenuBar } from './MenuBar';
+import { ThemeId } from '@/utils/themes';
 
 interface AppShellProps {
     children: React.ReactNode;
     isFocusMode?: boolean;
     editorSettings?: any;
     onSettingsChange?: (settings: any) => void;
-    theme?: 'default' | 'sepia' | 'dark' | 'blue';
-    onThemeChange: (theme: 'default' | 'sepia' | 'dark' | 'blue') => void;
+    theme?: ThemeId;
+    onThemeChange: (theme: ThemeId) => void;
     onSermonSelect: (sermon: any) => void;
     onToggleVersions: () => void;
     isSermonManagerOpen: boolean;
@@ -38,7 +39,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     isFocusMode = false,
     editorSettings,
     onSettingsChange,
-    theme = 'default',
+    theme = 'warm-paper',
     onThemeChange,
     onSermonSelect,
     onToggleVersions,
@@ -68,7 +69,10 @@ export const AppShell: React.FC<AppShellProps> = ({
     return (
         <div className={clsx(
             "flex flex-col h-screen overflow-hidden font-sans selection:bg-blue-100 dark:selection:bg-blue-500/30 transition-colors duration-500",
-            theme === 'dark' ? "bg-[#1C1C1E] text-slate-100" : "bg-white text-slate-900"
+            // Remove hardcodedbg/text classes here as ThemeManager handles global variables.
+            // However, we might want some base classes or rely completely on variables.
+            // Given the variable approach, we can simplify this.
+            "bg-[var(--editor-bg)] text-[var(--text-main)]"
         )}>
             {/* Custom Menu Bar */}
             {!isFocusMode && (
