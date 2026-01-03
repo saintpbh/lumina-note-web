@@ -150,15 +150,25 @@ export default function Home() {
     // Initial check for Google Drive token
     const token = localStorage.getItem('google_drive_token');
     if (token) {
-      googleDriveManager.setAccessToken(token);
-      googleDriveManager.getUserInfo().then(u => {
-        if (u) {
-          setUser(u);
-          handlePullFromCloud();
-        } else {
+      try {
+        googleDriveManager.setAccessToken(token);
+        googleDriveManager.getUserInfo().then(u => {
+          if (u) {
+            setUser(u);
+            handlePullFromCloud();
+          } else {
+            localStorage.removeItem('google_drive_token');
+          }
+        }).catch(err => {
+          console.error('Failed to get user info:', err);
           localStorage.removeItem('google_drive_token');
-        }
-      });
+          googleDriveManager.setAccessToken(null);
+        });
+      } catch (err) {
+        console.error('Token validation error:', err);
+        localStorage.removeItem('google_drive_token');
+        googleDriveManager.setAccessToken(null);
+      }
     }
 
     return () => {
