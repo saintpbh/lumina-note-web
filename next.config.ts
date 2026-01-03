@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  serverComponentsExternalPackages: ['hwp.js'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.alias = {
