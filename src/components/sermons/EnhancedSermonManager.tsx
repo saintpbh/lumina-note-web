@@ -54,7 +54,12 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
 
         console.time('FlexSearch Filter');
         const matchingIds = sermonSearchEngine.search(searchQuery);
+        console.log('Matching IDs from search:', matchingIds);
+        console.log('First 5 sermon IDs in initialSermons:', initialSermons.slice(0, 5).map(s => s.id));
+        console.log('Total initialSermons:', initialSermons.length);
+
         const filtered = initialSermons.filter(s => matchingIds.includes(s.id));
+        console.log('Filtered sermons count:', filtered.length);
         console.timeEnd('FlexSearch Filter');
 
         return filtered;
