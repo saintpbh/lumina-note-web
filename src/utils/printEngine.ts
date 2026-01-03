@@ -100,14 +100,19 @@ export async function printDocument(contentHtml: string, options: PrintOptions):
                 }
                 
                 /* Page setup - CRITICAL for multi-page */
+                /* Page setup - Hiding top headers by setting top margin to 0 */
                 @page {
-                    margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
+                    margin-top: 0mm !important;
+                    margin-bottom: ${margins.bottom}mm;
+                    margin-left: ${margins.left}mm;
+                    margin-right: ${margins.right}mm;
                     size: ${paperSize === 'a4' ? 'A4' : 'B5'};
                 }
                 
                 html, body {
                     margin: 0 !important;
                     padding: 0 !important;
+                    padding-top: ${margins.top}mm !important; /* Compensate for 0 margin-top */
                     background: white !important;
                     overflow: visible !important;
                     height: auto !important;

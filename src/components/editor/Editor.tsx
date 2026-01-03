@@ -292,7 +292,7 @@ export const Editor = ({
             await printDocument(editor.getHTML(), {
                 paperSize,
                 margins: printMargins,
-                title: 'Lumina Note'
+                title: '\u200B' // Zero-width space to hide title in browser header
             });
             setToast({ message: '인쇄 시작', type: 'success' });
         } catch (e) {
