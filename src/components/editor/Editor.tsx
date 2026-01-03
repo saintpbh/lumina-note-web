@@ -447,7 +447,7 @@ export const Editor = ({
                     }}
                     onMouseLeave={resetHideTimer}
                 >
-                    <div className="pointer-events-auto w-full max-w-[210mm]">
+                    <div className="pointer-events-auto w-full max-w-5xl">
                         <EditorToolbar
                             editor={editor}
                             theme={theme}

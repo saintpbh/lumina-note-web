@@ -106,10 +106,10 @@ export const EditorToolbar = ({
 
     return (
         <div
-            className="flex flex-col gap-2 p-3 w-full max-w-[210mm] luxury-toolbar rounded-3xl z-20 no-drag border border-white/20 dark:border-white/10 select-none bg-white/70 dark:bg-black/50 backdrop-blur-md shadow-2xl"
+            className="flex flex-row flex-wrap items-center justify-between gap-2 p-2 w-full luxury-toolbar rounded-3xl z-20 no-drag border border-white/20 dark:border-white/10 select-none bg-white/70 dark:bg-black/50 backdrop-blur-md shadow-2xl"
             onWheel={(e) => e.stopPropagation()}
         >
-            <div className="flex items-center gap-2 flex-wrap pb-1">
+            <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1 theme-bg-subtle p-1 rounded-xl">
                     <button
                         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -359,7 +359,6 @@ export const EditorToolbar = ({
                 </select>
             </div>
 
-            <div className="flex-1" />
 
             {/* Action & View Group */}
             <div className="flex items-center gap-1 theme-bg-subtle p-1 rounded-xl">
