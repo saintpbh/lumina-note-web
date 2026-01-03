@@ -6,10 +6,28 @@ import { Sermon } from '@/shared/types';
  * FlexSearch engine for fast client-side sermon search
  * Indexes: title, content, tags
  * Performance: <10ms for 1000+ documents
+ * Korean phrase search: whitespace-insensitive
  */
+
+/**
+ * Normalize Korean text by removing whitespace
+ * This allows phrase searches to match regardless of spacing
+ */
+function normalizeKorean(text: string): string {
+    // Check if text contains Korean characters
+    const hasKorean = /[\u3131-\u318E\uAC00-\uD7A3]/.test(text);
+
+    if (hasKorean) {
+        // Remove all whitespace for Korean text
+        return text.replace(/\s+/g, '');
+    }
+
+    return text;
+}
 
 export class SermonSearchEngine {
     private index: any;
+    private rawIndex: Sermon[] = []; // Store raw sermons for fallback search
     private isInitialized = false;
 
     constructor() {
@@ -29,6 +47,7 @@ export class SermonSearchEngine {
      */
     indexSermons(sermons: Sermon[]) {
         console.time('FlexSearch Indexing');
+        this.rawIndex = sermons; // Store for fallback search
         sermons.forEach(sermon => {
             this.index.add({
                 id: sermon.id,
@@ -46,14 +65,16 @@ export class SermonSearchEngine {
 
     /**
      * Search sermons by query
-     * @param query - Search terms
-     * @param limit - Max results (default: 50)
-     * @returns Array of sermon IDs matching the query
+     * Supports both FlexSearch (fast word search) and Korean phrase search (whitespace-insensitive)
      */
     search(query: string, limit: number = 50): number[] {
         if (!this.isInitialized || !query.trim()) {
             return [];
         }
+
+        // Check if query contains Korean and looks like a phrase (no spaces = phrase search request)
+        const hasKorean = /[\u3131-\u318E\uAC00-\uD7A3]/.test(query);
+        const normalizedQuery = normalizeKorean(query);
 
         console.time('FlexSearch Query');
         const results = this.index.search(query, {
@@ -82,6 +103,23 @@ export class SermonSearchEngine {
             });
         }
 
+        // If Korean phrase and we got no results, try whitespace-insensitive fallback
+        if (hasKorean && sermonIds.size === 0 && query.includes(' ')) {
+            console.log('Trying Korean phrase search fallback...');
+            this.rawIndex.forEach(sermon => {
+                const normalizedTitle = normalizeKorean(sermon.title);
+                const normalizedContent = normalizeKorean(sermon.content);
+                const normalizedTags = normalizeKorean(sermon.tags || '');
+
+                if (normalizedTitle.includes(normalizedQuery) ||
+                    normalizedContent.includes(normalizedQuery) ||
+                    normalizedTags.includes(normalizedQuery)) {
+                    sermonIds.add(sermon.id);
+                }
+            });
+            console.log(`Korean phrase search found ${sermonIds.size} results`);
+        }
+
         const idsArray = Array.from(sermonIds);
         console.log('Extracted sermon IDs:', idsArray);
 
@@ -101,6 +139,7 @@ export class SermonSearchEngine {
             tokenize: 'forward',
             cache: true
         });
+        this.rawIndex = [];
         this.isInitialized = false;
     }
 
@@ -116,6 +155,12 @@ export class SermonSearchEngine {
             created_at: sermon.created_at,
             updated_at: sermon.updated_at
         });
+
+        // Update rawIndex
+        const idx = this.rawIndex.findIndex(s => s.id === sermon.id);
+        if (idx !== -1) {
+            this.rawIndex[idx] = sermon;
+        }
     }
 
     /**
@@ -123,6 +168,7 @@ export class SermonSearchEngine {
      */
     removeSermon(sermonId: number) {
         this.index.remove(sermonId);
+        this.rawIndex = this.rawIndex.filter(s => s.id !== sermonId);
     }
 }
 

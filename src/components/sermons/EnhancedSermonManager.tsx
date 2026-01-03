@@ -160,7 +160,7 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                         {activeTab === 'all' ? (
                             <>
                                 {/* Search Bar */}
-                                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                                <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
                                     <div className="relative">
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
@@ -171,6 +171,11 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                             className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm luxury-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
                                         />
                                     </div>
+                                    {searchQuery && (
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 px-2">
+                                            Found <span className="font-bold text-blue-500">{filteredSermons.length}</span> sermon{filteredSermons.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Virtual List */}
