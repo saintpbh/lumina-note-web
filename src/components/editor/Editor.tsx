@@ -423,15 +423,6 @@ export const Editor = ({
                         )}>
                             <EditorContent editor={editor} />
 
-                            {stickyNotes.map(note => (
-                                <Vignette
-                                    key={note.id}
-                                    note={note}
-                                    settings={editorSettings}
-                                    onUpdate={updateStickyNote}
-                                    onDelete={deleteStickyNote}
-                                />
-                            ))}
                         </div>
                     </div>
                 </div>
@@ -490,6 +481,16 @@ export const Editor = ({
                     onClose={() => setIsPrompterOpen(false)}
                 />
             )}
+
+            {stickyNotes.map(note => (
+                <Vignette
+                    key={note.id}
+                    note={note}
+                    settings={editorSettings}
+                    onUpdate={updateStickyNote}
+                    onDelete={deleteStickyNote}
+                />
+            ))}
 
             {toast && (
                 <ToastNotification
