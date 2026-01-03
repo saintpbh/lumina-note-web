@@ -176,12 +176,11 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                             <p>No sermons found</p>
                                         </div>
                                     ) : (
-                                        <List
-                                            rowComponent={SermonRow}
-                                            rowCount={filteredSermons.length}
-                                            rowHeight={SERMON_ITEM_HEIGHT}
-                                            rowProps={{}}
-                                        />
+                                        <div className="overflow-y-auto" style={{ height: listHeight }}>
+                                            {filteredSermons.map((sermon, index) => (
+                                                <SermonRow key={sermon.id} index={index} style={{}} />
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             </>
