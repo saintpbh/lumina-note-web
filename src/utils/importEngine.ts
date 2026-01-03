@@ -30,8 +30,13 @@ export const importFile = async (file: File): Promise<{ content: string; title: 
             content = await importPdf(file);
             break;
         case 'hwp':
-            const { importHwp } = await import('./hwpImporter');
-            content = await importHwp(file);
+            try {
+                const { importHwp } = await import('./hwpImporter');
+                content = await importHwp(file);
+            } catch (error) {
+                console.error('HWP import failed:', error);
+                content = '<p>[HWP 파일 가져오기 기능이 일시적으로 사용할 수 없습니다.]</p>';
+            }
             break;
         default:
             // Fallback: try reading as text
