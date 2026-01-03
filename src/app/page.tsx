@@ -13,6 +13,9 @@ import { getSampleSermons } from '@/utils/sampleSermons';
 import { ThemeManager } from '@/components/layout/ThemeManager';
 import { ThemeId, THEMES } from '@/utils/themes';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { WelcomeMessageModal } from '@/components/ui/WelcomeMessageModal';
+import { Analytics } from '@/utils/analytics';
+import { ACTIVE_ANNOUNCEMENT } from '@/config/announcements';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -76,6 +79,7 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [authStatus, setAuthStatus] = useState<'idle' | 'checking' | 'creating' | 'welcome' | 'success'>('idle');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const editorRef = useRef<any>(null);
 
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
@@ -106,6 +110,30 @@ export default function Home() {
       try { setShortcuts(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
 
+    const savedTheme = localStorage.getItem('lumina-web-theme');
+    if (savedTheme && THEMES.some(t => t.id === savedTheme)) {
+      setTheme(savedTheme as ThemeId);
+    }
+
+    // Analytics & Announcements
+    Analytics.startSession();
+
+    // Check Announcement
+    if (ACTIVE_ANNOUNCEMENT.active) {
+      const lastSeen = localStorage.getItem('lumina_last_announcement');
+      if (ACTIVE_ANNOUNCEMENT.forceShow || lastSeen !== ACTIVE_ANNOUNCEMENT.id) {
+        // Delay slightly for effect or wait for auth? 
+        // Better to show immediately for impact, unless auth modal pops.
+        // If auth modal is checking, maybe wait? 
+        // Let's show it, z-index allows auth modal to be on top if needed.
+        setTimeout(() => setIsWelcomeModalOpen(true), 500);
+      }
+    }
+
+    // Handle Closing/Unloading for Analytics
+    const handleUnload = () => Analytics.endSession();
+    window.addEventListener('beforeunload', handleUnload);
+
     const savedSermons = localStorage.getItem('lumina-web-open-sermons');
     if (savedSermons) {
       try {
@@ -128,6 +156,10 @@ export default function Home() {
         }
       });
     }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+    };
   }, []);
 
   const handlePullFromCloud = async () => {
@@ -419,6 +451,13 @@ export default function Home() {
         status={authStatus}
         user={user}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+      <WelcomeMessageModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => {
+          setIsWelcomeModalOpen(false);
+          localStorage.setItem('lumina_last_announcement', ACTIVE_ANNOUNCEMENT.id);
+        }}
       />
       <div className="flex-1 flex overflow-hidden relative">
         {activeSermonId === null ? (
