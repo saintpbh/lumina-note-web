@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { FixedSizeList } from 'react-window';
+import { List } from 'react-window';
 import {
     Search, Folder, Hash, BookOpen,
     Trash2,
@@ -176,7 +176,7 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                             <p>No sermons found</p>
                                         </div>
                                     ) : (
-                                        <FixedSizeList
+                                        <List
                                             height={listHeight}
                                             itemCount={filteredSermons.length}
                                             itemSize={SERMON_ITEM_HEIGHT}
@@ -184,7 +184,7 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                             overscanCount={5}
                                         >
                                             {SermonRow}
-                                        </FixedSizeList>
+                                        </List>
                                     )}
                                 </div>
                             </>
