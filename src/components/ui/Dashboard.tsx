@@ -11,6 +11,7 @@ interface DashboardProps {
     recentSermons: any[];
     onSelectSermon: (sermon: any) => void;
     onLoadSamples?: () => void;
+    onLoadTestData?: () => void;
     theme: ThemeId;
 }
 
@@ -20,6 +21,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     recentSermons,
     onSelectSermon,
     onLoadSamples,
+    onLoadTestData,
     theme
 }) => {
     const isDark = THEMES.find(t => t.id === theme)?.type === 'dark';
@@ -114,6 +116,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <div>
                                     <h3 className={cn("text-xl font-bold", "text-[var(--text-main)]")}>Load Samples</h3>
                                     <p className={cn("text-sm", "text-[var(--text-muted)]")}>Try out 3 full-length sample sermons.</p>
+                                </div>
+                            </div>
+                        </button>
+                    )}
+
+                    {onLoadTestData && (
+                        <button
+                            onClick={onLoadTestData}
+                            className={cn(
+                                "group relative overflow-hidden p-8 rounded-3xl border transition-all duration-300 text-left hover:shadow-2xl hover:-translate-y-1",
+                                "bg-[var(--paper-bg)] border-[var(--border-color)] hover:border-yellow-500/50"
+                            )}
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                                <Zap size={120} />
+                            </div>
+                            <div className="relative z-10 space-y-4">
+                                <div className="w-12 h-12 rounded-2xl bg-yellow-600 flex items-center justify-center text-white shadow-lg shadow-yellow-600/20">
+                                    <Zap size={24} />
+                                </div>
+                                <div>
+                                    <h3 className={cn("text-xl font-bold", "text-[var(--text-main)]")}>Load Test Data</h3>
+                                    <p className={cn("text-sm", "text-[var(--text-muted)]")}>Performance test with 1000 sermons.</p>
                                 </div>
                             </div>
                         </button>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Editor } from '@/components/editor/Editor';
 import { SermonManager } from '@/components/sermons/SermonManager';
+import { EnhancedSermonManager } from '@/components/sermons/EnhancedSermonManager';
 import { SermonVersionSidebar } from '@/components/sermons/SermonVersionSidebar';
 import { ShortcutConfig, Sermon } from '@/shared/types';
 import { matchShortcut } from '@/utils/shortcutUtils';
@@ -19,6 +20,7 @@ import { ACTIVE_ANNOUNCEMENT } from '@/config/announcements';
 import { ExportModal, ExportFormat } from '@/components/io/ExportModal';
 import { importFile } from '@/utils/importEngine';
 import { exportDocument } from '@/utils/exportEngine';
+import { generateLargeTestSet } from '@/utils/testSermonGenerator';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -459,6 +461,19 @@ export default function Home() {
     alert("3 Sample Sermons Loaded!");
   };
 
+  const handleLoadTestData = () => {
+    if (confirm('This will load 1000 test sermons for performance testing. Continue?')) {
+      console.log('Generating 1000 test sermons...');
+      const startTime = performance.now();
+      const testSermons = generateLargeTestSet();
+      const endTime = performance.now();
+      console.log(`Generated in ${(endTime - startTime).toFixed(2)}ms`);
+
+      setOpenSermons(prev => [...prev, ...testSermons]);
+      alert(`✅ Loaded 1000 test sermons!\nGeneration time: ${(endTime - startTime).toFixed(2)}ms`);
+    }
+  };
+
   const handleDeleteSermon = async (id: number) => {
     if (confirm('Are you sure you want to delete this sermon?')) {
       if (user) {
@@ -576,6 +591,7 @@ export default function Home() {
             recentSermons={openSermons}
             onSelectSermon={(s) => setActiveSermonId(s.id)}
             onLoadSamples={handleLoadSamples}
+            onLoadTestData={handleLoadTestData}
             theme={theme}
           />
         ) : (
@@ -637,7 +653,7 @@ export default function Home() {
         />
       </div>
 
-      <SermonManager
+      <EnhancedSermonManager
         isOpen={isSermonManagerOpen}
         onClose={() => setIsSermonManagerOpen(false)}
         onSelectSermon={handleSermonSelect}
