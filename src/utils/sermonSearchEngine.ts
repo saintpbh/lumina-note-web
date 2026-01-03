@@ -62,15 +62,30 @@ export class SermonSearchEngine {
         });
         console.timeEnd('FlexSearch Query');
 
+        console.log('FlexSearch raw results:', results);
+
         // FlexSearch returns results per field, we need to merge and deduplicate
         const sermonIds = new Set<number>();
-        results.forEach((fieldResult: any) => {
-            fieldResult.result.forEach((id: number) => {
-                sermonIds.add(id);
-            });
-        });
 
-        return Array.from(sermonIds);
+        if (Array.isArray(results)) {
+            results.forEach((fieldResult: any) => {
+                console.log('Field result:', fieldResult);
+                if (fieldResult && Array.isArray(fieldResult.result)) {
+                    fieldResult.result.forEach((item: any) => {
+                        // item can be either an ID or an object with id property
+                        const id = typeof item === 'object' ? item.id : item;
+                        if (id != null) {
+                            sermonIds.add(Number(id));
+                        }
+                    });
+                }
+            });
+        }
+
+        const idsArray = Array.from(sermonIds);
+        console.log('Extracted sermon IDs:', idsArray);
+
+        return idsArray;
     }
 
     /**
