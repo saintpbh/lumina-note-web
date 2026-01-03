@@ -181,9 +181,35 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                             <p>No sermons found</p>
                                         </div>
                                     ) : (
-                                        <div className="overflow-y-auto" style={{ height: listHeight }}>
-                                            {filteredSermons.map((sermon, index) => (
-                                                <SermonRow key={sermon.id} index={index} style={{}} />
+                                        <div className="overflow-y-auto space-y-3 p-4" style={{ height: listHeight }}>
+                                            {filteredSermons.map((sermon) => (
+                                                <div key={sermon.id} className="px-4 py-1.5">
+                                                    <div
+                                                        className="group p-4 rounded-2xl bg-white dark:bg-[#2C2C2E] border border-gray-100 dark:border-gray-800 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-start justify-between cursor-pointer"
+                                                        onClick={() => onSelectSermon(sermon)}
+                                                    >
+                                                        <div className="flex-1 space-y-1">
+                                                            <h3 className="font-bold text-slate-900 dark:text-slate-100 luxury-serif group-hover:text-blue-500 transition-colors line-clamp-1">
+                                                                {sermon.title || 'Untitled Sermon'}
+                                                            </h3>
+                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 luxury-mono">
+                                                                <span className="flex items-center gap-1"><BookOpen size={14} /> {sermon.passage || 'No passage'}</span>
+                                                                <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(sermon.updated_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {onDelete && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); onDelete(sermon.id); }}
+                                                                    className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
+                                                            <ChevronRight size={18} className="text-gray-300" />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
