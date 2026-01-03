@@ -274,6 +274,10 @@ export const Editor = ({
                 style: "font-family: 'KoPub Batang', serif;",
             }
         },
+        onCreate: ({ editor }) => {
+            // Set focus to the start (Title) on initialization
+            editor.commands.focus('start');
+        },
         immediatelyRender: false,
     });
 
