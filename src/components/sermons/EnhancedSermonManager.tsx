@@ -177,14 +177,11 @@ export const EnhancedSermonManager: React.FC<SermonManagerProps> = ({
                                         </div>
                                     ) : (
                                         <List
-                                            height={listHeight}
-                                            itemCount={filteredSermons.length}
-                                            itemSize={SERMON_ITEM_HEIGHT}
-                                            width="100%"
-                                            overscanCount={5}
-                                        >
-                                            {SermonRow}
-                                        </List>
+                                            rowComponent={SermonRow}
+                                            rowCount={filteredSermons.length}
+                                            rowHeight={SERMON_ITEM_HEIGHT}
+                                            rowProps={{}}
+                                        />
                                     )}
                                 </div>
                             </>
