@@ -80,7 +80,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                     onAction={onAction || (() => { })}
                     activeDocumentId={activeDocumentId}
                     theme={theme}
-                    isLoggedIn={!!user}
+                    user={user}
+                    syncStatus={syncStatus}
                 />
             )}
 

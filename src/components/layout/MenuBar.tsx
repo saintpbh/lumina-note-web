@@ -9,12 +9,15 @@ import {
     Copy, Clipboard, Layout, Maximize2, Palette, Zap,
     BookOpen, Activity, PlayCircle, Eye, LogIn, CloudOff
 } from 'lucide-react';
+import { GoogleUser } from '@/utils/googleDriveManager';
+import { UserProfile } from './UserProfile';
 
 interface MenuBarProps {
     onAction: (actionId: string) => void;
     activeDocumentId: number | null;
     theme: ThemeId;
-    isLoggedIn?: boolean;
+    user: GoogleUser | null;
+    syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
 }
 
 interface MenuItem {
@@ -32,7 +35,7 @@ interface MenuSection {
     items: MenuItem[];
 }
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, theme, isLoggedIn }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, theme, user, syncStatus }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,9 +53,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
                 { id: 'export-pdf', label: 'Export as PDF', icon: <Download size={14} />, disabled: !activeDocumentId },
                 { id: 'print', label: 'Print...', icon: <Printer size={14} />, shortcut: 'Alt+P', disabled: !activeDocumentId },
                 { id: 'divider2', label: '', divider: true },
-                isLoggedIn
-                    ? { id: 'logout', label: 'Sign Out (Cloud)', icon: <CloudOff size={14} /> }
-                    : { id: 'login', label: 'Sign In / Sync', icon: <LogIn size={14} /> },
+                // Removed Login/Logout from File menu, moved to right side
             ]
         },
         {
@@ -198,6 +199,31 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onAction, activeDocumentId, th
             </div>
 
             <div className="flex-1" />
+
+            {/* User Profile / Status */}
+            <div className="flex items-center gap-3">
+                {user ? (
+                    <UserProfile
+                        user={user}
+                        onLogout={() => onAction('logout')}
+                        syncStatus={syncStatus}
+                        theme={theme}
+                    />
+                ) : (
+                    <button
+                        onClick={() => onAction('login')}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
+                            isDark
+                                ? "bg-white text-black hover:bg-gray-200"
+                                : "bg-black text-white hover:bg-gray-800"
+                        )}
+                    >
+                        <LogIn size={12} />
+                        Sign In / Sync
+                    </button>
+                )}
+            </div>
 
             {activeDocumentId ? (
                 <div className="flex items-center gap-2 text-[10px] font-medium opacity-50">

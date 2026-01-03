@@ -12,6 +12,7 @@ import { googleDriveManager, GoogleUser } from '@/utils/googleDriveManager';
 import { getSampleSermons } from '@/utils/sampleSermons';
 import { ThemeManager } from '@/components/layout/ThemeManager';
 import { ThemeId, THEMES } from '@/utils/themes';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 const USAGE_GUIDE = `
 <div class="usage-guide">
@@ -73,6 +74,8 @@ export default function Home() {
   const [printMargins, setPrintMargins] = useState({ top: 20, right: 20, bottom: 20, left: 20 });
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [authStatus, setAuthStatus] = useState<'idle' | 'checking' | 'creating' | 'welcome' | 'success'>('idle');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const editorRef = useRef<any>(null);
 
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
@@ -166,9 +169,39 @@ export default function Home() {
         const { token } = event.data;
         localStorage.setItem('google_drive_token', token);
         googleDriveManager.setAccessToken(token);
-        const userInfo = await googleDriveManager.getUserInfo();
-        setUser(userInfo);
-        handlePullFromCloud();
+
+        setIsAuthModalOpen(true);
+        setAuthStatus('checking');
+
+        try {
+          const userInfo = await googleDriveManager.getUserInfo();
+          setUser(userInfo);
+
+          // Check/Create Workspace
+          const { isNewUser } = await googleDriveManager.checkWorkspaceStatus();
+
+          if (isNewUser) {
+            setAuthStatus('creating');
+            await new Promise(r => setTimeout(r, 1500)); // Visual delay
+            await googleDriveManager.createWelcomeFile();
+            await new Promise(r => setTimeout(r, 1000));
+            setAuthStatus('welcome');
+            // Don't auto-close for creating; let user click "Start"
+            handlePullFromCloud(); // Pull the welcome file
+          } else {
+            setAuthStatus('success');
+            handlePullFromCloud();
+            setTimeout(() => {
+              setIsAuthModalOpen(false);
+              setAuthStatus('idle');
+            }, 1500);
+          }
+        } catch (e) {
+          console.error("Auth Setup Failed", e);
+          setIsAuthModalOpen(false);
+          alert("Failed to setup workspace. Please try again.");
+        }
+
         window.removeEventListener('message', handleToken);
       }
     };
@@ -381,6 +414,12 @@ export default function Home() {
       syncStatus={syncStatus}
     >
       <ThemeManager theme={theme} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        status={authStatus}
+        user={user}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
       <div className="flex-1 flex overflow-hidden relative">
         {activeSermonId === null ? (
           <Dashboard

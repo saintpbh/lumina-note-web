@@ -69,16 +69,15 @@ export class GoogleDriveManager {
         return response.status === 204 ? null : response.json();
     }
 
-    async ensureAppFolder(): Promise<string> {
-        if (this.appFolderId) return this.appFolderId;
+    async checkWorkspaceStatus(): Promise<{ folderId: string, isNewUser: boolean }> {
+        if (this.appFolderId) return { folderId: this.appFolderId!, isNewUser: false };
 
-        // Find LuminaFlow folder
         const data = await this.fetchDrive(`/files?q=name='${APP_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`);
 
         if (data.files && data.files.length > 0) {
             this.appFolderId = data.files[0].id;
+            return { folderId: this.appFolderId!, isNewUser: false };
         } else {
-            // Create LuminaFlow folder
             const folder = await this.fetchDrive('/files', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -87,12 +86,14 @@ export class GoogleDriveManager {
                 })
             });
             this.appFolderId = folder.id;
+            return { folderId: this.appFolderId!, isNewUser: true };
         }
+    }
 
-        // Also ensure 'sermons' subfolder
+    async ensureAppFolder(): Promise<string> {
+        const { folderId } = await this.checkWorkspaceStatus();
         await this.ensureSubfolder('sermons');
-
-        return this.appFolderId!;
+        return folderId;
     }
 
     private async ensureSubfolder(name: string): Promise<string> {
@@ -211,6 +212,29 @@ export class GoogleDriveManager {
         if (data.files && data.files.length > 0) {
             await this.fetchDrive(`/files/${data.files[0].id}`, { method: 'DELETE' });
         }
+    }
+    async createWelcomeFile() {
+        if (this.accessToken === 'sim-token') return;
+
+        const welcomeSermon: Sermon = {
+            id: Date.now(),
+            title: 'Welcome to Lumina Note',
+            content: `<h1>Welcome to Lumina Note</h1>
+<p>We are thrilled to have you here. Lumina Note is designed to bring <strong>clarity, focus, and peace</strong> to your writing process.</p>
+<h2>Getting Started</h2>
+<ul>
+<li><strong>Focus Mode</strong>: Press <code>Alt+Shift+F</code> to enter a distraction-free environment.</li>
+<li><strong>Cloud Sync</strong>: Your work is automatically synced to your <strong>Google Drive > LuminaFlow > sermons</strong> folder.</li>
+<li><strong>Bible Search</strong>: Quickly find scripture with <code>Alt+L</code>.</li>
+</ul>
+<p>Start writing your first sermon by clicking the <strong>+ New Sermon</strong> button on the dashboard.</p>
+<p><em>Fiat Lux — Let there be light.</em></p>`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            tags: 'welcome, guide'
+        };
+
+        await this.saveSermon(welcomeSermon);
     }
 }
 
