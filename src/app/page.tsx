@@ -85,6 +85,7 @@ export default function Home() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const editorRef = useRef<any>(null);
+  const prevSermonsRef = useRef<Sermon[]>([]);
 
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>({
     save: 'Alt+s',
@@ -293,12 +294,39 @@ export default function Home() {
     }
   }, [user]);
 
-  // Auto-sync Effect
+  // Auto-sync Effect (Optimized)
   useEffect(() => {
     if (!user) return;
 
+    // Compare current sermons with previous to detect actual changes
+    const hasChanges = openSermons.some((sermon, idx) => {
+      const prev = prevSermonsRef.current.find(p => p.id === sermon.id);
+      if (!prev) return true; // New sermon
+      return sermon.content !== prev.content || sermon.title !== prev.title;
+    });
+
+    if (!hasChanges) {
+      console.log('[Auto-Save] No changes detected, skipping sync');
+      return;
+    }
+
+    // Filter out empty or near-empty sermons
+    const sermonsToSync = openSermons.filter(s => {
+      if (!s.content) return false;
+      // Remove HTML tags to check actual text content
+      const textContent = s.content.replace(/<[^>]*>/g, '').trim();
+      return textContent.length > 0;
+    });
+
+    if (sermonsToSync.length === 0) {
+      console.log('[Auto-Save] No non-empty sermons to sync');
+      return;
+    }
+
     const syncTimeout = setTimeout(() => {
-      executeCloudSync(openSermons);
+      executeCloudSync(sermonsToSync);
+      // Update reference after successful sync initiation
+      prevSermonsRef.current = [...openSermons];
     }, 10000); // 10 second debounce for Google Drive sync
 
     return () => clearTimeout(syncTimeout);
