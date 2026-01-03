@@ -47,7 +47,7 @@ export default function AdminPage() {
                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-6">
                     <ShieldAlert className="w-8 h-8 text-red-600 dark:text-red-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Access Resticted</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Access Restricted</h1>
                 <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md">
                     This area is restricted to administrators. Please sign in with an authorized account (saintpbh@gmail.com).
                 </p>
