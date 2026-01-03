@@ -465,7 +465,12 @@ export const Editor = ({
                 </div>
             </div>
 
-            <OutlineSidebar editor={editor} />
+            <div className={cn(
+                "transition-all duration-500 ease-in-out h-full bg-transparent",
+                isFocusMode ? "absolute right-0 top-0 bottom-0 z-10" : "relative flex-shrink-0"
+            )}>
+                <OutlineSidebar editor={editor} isFocusMode={isFocusMode} />
+            </div>
 
             <ScriptureModal
                 isOpen={isScriptureModalOpen}

@@ -5,13 +5,14 @@ import { useOutline } from './hooks/useOutline';
 
 interface OutlineSidebarProps {
     editor: Editor | null;
+    isFocusMode: boolean;
 }
 
 /**
  * Outline Sidebar v9.0 - REFINED UX
  * Subtle line indicator with smooth spacing animations
  */
-export const OutlineSidebar: React.FC<OutlineSidebarProps> = ({ editor }) => {
+export const OutlineSidebar: React.FC<OutlineSidebarProps> = ({ editor, isFocusMode }) => {
     const { outline, moveSection } = useOutline(editor);
 
     const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -115,7 +116,7 @@ export const OutlineSidebar: React.FC<OutlineSidebarProps> = ({ editor }) => {
     }, []);
 
     return (
-        <div className="w-64 h-full bg-[#FAFBFC] dark:bg-[#0A0C10] border-l border-gray-200 dark:border-gray-800 flex flex-col no-print select-none">
+        <div className={`w-64 h-full border-l border-gray-200 dark:border-gray-800 flex flex-col no-print select-none transition-colors duration-300 ${isFocusMode ? 'bg-transparent backdrop-blur-sm' : 'bg-[#FAFBFC] dark:bg-[#0A0C10]'}`}>
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-2">
