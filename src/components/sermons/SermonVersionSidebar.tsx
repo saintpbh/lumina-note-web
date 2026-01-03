@@ -55,6 +55,15 @@ export const SermonVersionSidebar: React.FC<SermonVersionSidebarProps> = ({
 
     const loadVersions = async () => {
         if (!currentSermonId) return;
+
+        // Check if user is logged into Google Drive
+        const token = localStorage.getItem('google_drive_token');
+        if (!token) {
+            console.log('[Versions] User not logged into Google Drive, skipping version load');
+            setVersions([]);
+            return;
+        }
+
         setLoading(true);
         try {
             const allRevisions = await googleDriveManager.listRevisions(currentSermonId);
@@ -80,8 +89,14 @@ export const SermonVersionSidebar: React.FC<SermonVersionSidebarProps> = ({
             }));
 
             setVersions(versionsWithNames);
-        } catch (e) {
-            console.error('Failed to load versions:', e);
+        } catch (e: any) {
+            // Silently handle auth errors (user not logged in)
+            if (e?.message?.includes('access token') || e?.message?.includes('401')) {
+                console.log('[Versions] No Google Drive access, skipping version load');
+                setVersions([]);
+            } else {
+                console.error('Failed to load versions:', e);
+            }
         } finally {
             setLoading(false);
         }
